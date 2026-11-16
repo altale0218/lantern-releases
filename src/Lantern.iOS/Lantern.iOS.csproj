@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-ios26.0</TargetFramework>
+    <LanternIosSdkVersion Condition="'$(LanternIosSdkVersion)' == ''">26.5</LanternIosSdkVersion>
+    <TargetFramework>net10.0-ios$(LanternIosSdkVersion)</TargetFramework>
     <SupportedOSPlatformVersion>17.0</SupportedOSPlatformVersion>
     <OutputType>Exe</OutputType>
     <ImplicitUsings>enable</ImplicitUsings>

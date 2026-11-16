@@ -32,6 +32,11 @@
       "sha256": "1c19646f05dbe1d951df0142a54399f4b7d3398e5603dd2cc14272df19c5d99a"
     },
     {
+      "path": ".github/workflows/apple-native.yml",
+      "bytes": 1974,
+      "sha256": "35a23dd70aa10123317774de9fe0181ad33fb7042a100ba0c37e081b26b44862"
+    },
+    {
       "path": ".github/workflows/checks.yml",
       "bytes": 1558,
       "sha256": "aedccba898c5fe51ea23bc23412ff73d8e9849febc9920669e7d3ea43d371d1d"
@@ -448,8 +453,8 @@
     },
     {
       "path": "src/Lantern.iOS/Lantern.iOS.csproj",
-      "bytes": 945,
-      "sha256": "e7cd2ef252d42e8d30afef0ba5ccec210f61fd3855c3f471df8539266f551b43"
+      "bytes": 1062,
+      "sha256": "534b91c3bbd474715e14bef72a6a1bbe17cbd741fb74044e76e815cbb1e2afcf"
     },
     {
       "path": "src/Lantern.iOS/LanternTabs.cs",
