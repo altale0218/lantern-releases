@@ -1,27 +1,27 @@
 [
   {
-    "tag_name": "v0.7.25",
+    "tag_name": "v0.7.26",
     "draft": false,
     "prerelease": true,
-    "body": "闪传 Lantern 0.7.25 测试版\n\n- 发行接口未发现新版时会再核对备用清单，减少列表缓存造成的漏报。\n- 更新中心在下载前显示一条更新要点，并可展开完整更新日志。\n- Android versionCode 58，Windows 手动确认安装。",
+    "body": "闪传 Lantern 0.7.26 测试版\n\n- 聊天和任务刷新时复用未变化的卡片，长记录在后台状态变化时更流畅。\n- 文档预览阅读区增宽，界面放大后仍能准确跳到所选章节或工作表。\n- 更新检查跳过仅发布源码的条目，保留相同渠道内可安装的版本。\n- Android versionCode 59，Windows 手动确认安装。",
     "assets": [
       {
         "name": "Lantern-Android.apk",
         "size": 47074931,
-        "digest": "sha256:ec1f31d76430a60c5b15c4dd4dc432cbfbcab84a8a9c690a73fd28e38e9e1502",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.25/Lantern-Android.apk"
+        "digest": "sha256:2470a8dcd267838122a5f6b2b51fadfcb9666fcc9ff45bd61548877230d16739",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.26/Lantern-Android.apk"
       },
       {
         "name": "Lantern-Windows.zip",
-        "size": 3410872,
-        "digest": "sha256:88566f9973dd2be40bba235c83b88eb5b73bd20bc893a869ac9b8a4fe1ef80bb",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.25/Lantern-Windows.zip"
+        "size": 3411364,
+        "digest": "sha256:35288f8f1f25303bf5f32b27e4e16a01c5dddaa76e9d0af8c13497b7ad30908b",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.26/Lantern-Windows.zip"
       },
       {
         "name": "SHA256SUMS.txt",
         "size": 172,
-        "digest": "sha256:f26c7f432e3e50ed03f4467a2ffa88372d294fbe8020ebc5301c7beb6fad8475",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.25/SHA256SUMS.txt"
+        "digest": "sha256:c1285c144fb26077fd1cda7adfaee22ca0fe2c1078372dbf34d02082355c80d7",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.26/SHA256SUMS.txt"
       }
     ]
   }
