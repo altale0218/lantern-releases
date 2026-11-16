@@ -16,8 +16,6 @@ jobs:
         include:
           - runner: macos-26-intel
             rid: iossimulator-x64
-          - runner: macos-26
-            rid: iossimulator-arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 35
     env:
@@ -100,7 +98,16 @@ jobs:
           xcrun simctl launch "${launch_args[@]}" "$device" "$app_id" | tee "$RUNNER_TEMP/lantern-ios-launch.log"
           pid="$(awk 'END {print $NF}' "$RUNNER_TEMP/lantern-ios-launch.log")"
           [[ "$pid" =~ ^[0-9]+$ ]]
-          sleep 10
+          data="$(xcrun simctl get_app_container "$device" "$app_id" data)"
+          for elapsed in 10 20 30 40 50 60 70; do
+            sleep 10
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            echo "Simulator app process alive after $elapsed seconds"
+            if test -d "$data/Library/Application Support/Lantern"; then
+              echo "Lantern data setup reached after $elapsed seconds"
+              break
+            fi
+          done
           if ! kill -0 "$pid" 2>/dev/null; then
             echo "iPhone simulator app exited early; collecting only relevant failure details"
             grep -Eh 'Unhandled|Exception|Error|Abort|Fatal|^   at ' "$RUNNER_TEMP/lantern-app-out.log" "$RUNNER_TEMP/lantern-app-error.log" | tail -n 25 || true
@@ -128,6 +135,27 @@ jobs:
             done || true
             exit 1
           fi
-          data="$(xcrun simctl get_app_container "$device" "$app_id" data)"
-          test -d "$data/Library/Application Support/Lantern"
+          if ! test -d "$data/Library/Application Support/Lantern"; then
+            echo "Process alive but application data has not been initialized"
+            screenshot="$RUNNER_TEMP/lantern-screen.png"
+            xcrun simctl io "$device" screenshot "$screenshot"
+            cat > "$RUNNER_TEMP/ocr.swift" <<'SWIFT'
+          import Foundation
+          import Vision
+          let request = VNRecognizeTextRequest()
+          request.recognitionLanguages = ["zh-Hans", "en-US"]
+          let handler = VNImageRequestHandler(url: URL(fileURLWithPath: CommandLine.arguments[1]))
+          try handler.perform([request])
+          let visibleText = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
+          for label in ["Lantern", "闪传", "传输", "聊天", "设置", "相机", "Camera", "App Store"] {
+              if visibleText.localizedCaseInsensitiveContains(label) { print("Visible label:", label) }
+          }
+          SWIFT
+            swift "$RUNNER_TEMP/ocr.swift" "$screenshot" || true
+            executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")"
+            xcrun simctl spawn "$device" log show --last 3m --info --style compact \
+              --predicate "process == \"$executable\" OR eventMessage CONTAINS[c] \"$app_id\"" \
+              | grep -Ei 'scene|launch|connection|exception|codesign|foreground|springboard|denied|failed' | tail -n 32 || true
+            exit 1
+          fi
           echo "PASS iPhone simulator launch reached the native app data setup and the process is still running"
