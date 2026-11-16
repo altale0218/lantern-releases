@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.23";
-    public const int AndroidCode=56;
+    public const string Version="0.7.24";
+    public const int AndroidCode=57;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.23\n• 设置新增分组跳转，窄屏上的开关说明使用整行。\n• 大字号和界面放大时，底部导航保持单行。\n• 按文件大小选择接收写入缓冲，减少一次接收许多小文件时的内存分配。";
+    public const string Notes="0.7.24\n• 设备聊天支持搜索消息和文件名，直接跳到当前会话的对应记录。\n• 会话顶部将查找、记录管理和更新入口放在同一组，窄屏自动调整排列。\n• 跳到历史消息时保留草稿和阅读位置，可以一键回到最新消息。\n• 设备离线时可在会话内刷新设备状态。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

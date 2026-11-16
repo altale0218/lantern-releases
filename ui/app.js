@@ -13,6 +13,8 @@ const gid=()=>crypto.randomUUID().replaceAll('-','');
 let chatKey='',chatLimit=60,chatStick=true,chatSendReturn='',chatReturnPage='history',speedReturnPage='transfer',updatesReturnPage='transfer',selectionId='',sendTargets=new Set(),suspendedModal=null;let releaseAcknowledging=false;const updateInvites=new Set();const chatDrafts=new Map();
 const sendingChats=new Set();
 let firstRenderedChatId='';
+let chatAnchorId='';
+let chatSearchQuery='';
 let saved={};try{saved=JSON.parse(localStorage.getItem('lantern.preview.settings')||'{}')}catch{}
 const defaults={showDeviceSecurityHint:false,showSidebarSecurityHint:false,uiScale:100,fontScale:100,theme:'system',discoverable:true,autoAccept:true,allowFileDrop:true,windowsTaskbarProgress:true,thumbnails:true,history:true,notifications:true,transferNotifications:true,xiaomiIsland:false,notificationDetails:false,windowsNotifications:true,chunkBytes:1048576,limitMiB:0};
 let state={mode:'preview',self:{id:'self',name:'示例本机',platform:'Windows'},address:'192.0.2.1',port:53319,settings:{...defaults,...saved},devices:[{id:'demo-phone',name:'示例手机',platform:'Android',address:'192.0.2.10',port:53319,trusted:true,online:true,pairedAt:'示例日期',fingerprint:'DEMO · PHONE'},{id:'demo-computer',name:'示例电脑',platform:'Windows',address:'192.0.2.20',port:53319,trusted:true,online:true,pairedAt:'示例日期',fingerprint:'DEMO · COMPUTER'}],tasks:[{id:'sample1',name:'周末山野 · 原片备份',direction:'receive',peer:'示例手机',state:'transferring',total:1288490188,completed:811748818,speed:89443532,expanded:true,created:'今天 14:32',files:[{id:'f1',name:'山间日出.jpg',size:25690112,completed:25690112,mime:'image/jpeg',preview:'mountain.svg'},{id:'f2',name:'海岸公路.mp4',size:962592768,completed:705288274,mime:'video/mp4',preview:'coast.svg'},{id:'f3',name:'旅行手记.pdf',size:1939865,completed:0,mime:'application/pdf'},{id:'f4',name:'摄影素材.zip',size:298267443,completed:0,mime:'application/zip'}]},{id:'sample2',name:'品牌设计 · 项目交付',direction:'send',peer:'示例电脑',state:'completed',total:256901120,completed:256901120,speed:0,created:'今天 13:46',files:[{id:'f5',name:'品牌设计规范.pdf',size:256901120,completed:256901120,mime:'application/pdf'}]}],pending:[]};
@@ -136,7 +138,9 @@ function renderFrame(){if(fileMenu&&state.self.platform!=='Windows')closeFileMen
  const current=page==='chat'?currentConversation():null,title=({transfer:'传输中心',progress:'传输进度',history:'设备聊天',settings:'设置',chat:current?.name||'聊天',updates:'更新中心','speed-test':'连接测速'})[page]||'传输中心';
  const updateButton=page!=='updates'?'<button class="icon-btn update-entry" data-action="open-updates" aria-label="更新中心" title="检查更新与更新日志">'+icon('download')+(state.ota?.phase==='available'||state.ota?.phase==='ready'?'<i class="update-dot"></i>':'')+'</button>':'';
  const peerAvatar=page==='chat'&&current?.device?'<span class="conversation-avatar '+(current.device.online?'is-online':'')+'" aria-hidden="true">'+icon(deviceIcon(current.device.platform))+'</span>':'';
- const header=secondary?'<button class="icon-btn secondary-back" data-action="secondary-back" aria-label="返回">'+icon('arrow')+'</button>'+peerAvatar+'<div class="grow secondary-title"><h1 tabindex="-1">'+esc(title)+'</h1><small>'+esc(page==='chat'?(current?.device?.online?'在线 · 端到端加密':'设备离线 · 可以查看历史记录'):page==='speed-test'?'局域网 · 双向测速':'Lantern '+(state.version||'0.7.23'))+'</small></div>'+(page==='chat'?'<button class="icon-btn" data-action="refresh-devices" aria-label="刷新设备状态">'+icon('refresh')+'</button><button class="icon-btn" data-action="chat-record-menu" aria-label="聊天记录管理" aria-pressed="'+recordMode+'" title="'+(recordMode?'退出记录多选':'管理聊天记录')+'">'+icon('log')+'</button>':'')+updateButton:'<h1 class="android-title" tabindex="-1">'+title+'</h1><div class="breadcrumb">闪传 Lantern <span>/ &nbsp; '+title+'</span></div><div class="topbar-actions">'+networkBadge()+(applePlatform(state.self.platform)&&page==='transfer'?'<button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button>':'')+updateButton+'</div>';
+ const secondaryActions=page==='chat'?'<div class="chat-header-actions"><button class="icon-btn" data-action="chat-search" aria-label="查找聊天记录" title="查找聊天记录"'+(current?.items.length?'':' disabled')+'>'+icon('search')+'</button>'+
+  '<button class="icon-btn" data-action="chat-record-menu" aria-label="聊天记录管理" aria-pressed="'+recordMode+'" title="'+(recordMode?'退出记录多选':'管理聊天记录')+'">'+icon('log')+'</button>'+updateButton+'</div>':updateButton;
+ const header=secondary?'<button class="icon-btn secondary-back" data-action="secondary-back" aria-label="返回">'+icon('arrow')+'</button>'+peerAvatar+'<div class="grow secondary-title"><h1 tabindex="-1">'+esc(title)+'</h1><small>'+esc(page==='chat'?(current?.device?.online?'在线 · 端到端加密':'设备离线 · 可以查看历史记录'):page==='speed-test'?'局域网 · 双向测速':'Lantern '+(state.version||'0.7.24'))+'</small></div>'+secondaryActions:'<h1 class="android-title" tabindex="-1">'+title+'</h1><div class="breadcrumb">闪传 Lantern <span>/ &nbsp; '+title+'</span></div><div class="topbar-actions">'+networkBadge()+(applePlatform(state.self.platform)&&page==='transfer'?'<button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button>':'')+updateButton+'</div>';
  const activeTransfers=secondary?0:state.tasks.reduce((count,task)=>count+(isActiveFileTask(task)?1:0),0);
  const sidebar=secondary?'':'<aside class="sidebar"><div class="brand"><div class="brand-icon">'+icon('bolt')+'</div><span>闪传<small>LANTERN</small></span></div><div class="nav-label">设备与传输</div><nav aria-label="主导航">'+navigationButtons(activeTransfers,false)+'</nav><div class="sidebar-foot">'+(state.settings.showSidebarSecurityHint?'<div class="secure-note">'+icon('shield','shield')+'<h3>只在你的设备之间</h3><p>密码认证配对 · 端到端加密<br>无需服务器，文件留在局域网。</p><button class="link" data-page="settings">查看安全设置 '+icon('arrow')+'</button></div>':'')+'<div class="self-device"><div class="self-avatar">'+icon(deviceIcon(state.self.platform))+'</div><div class="grow"><b>'+esc(state.self.name)+'</b><small>本机 · '+esc(state.self.platform)+'</small></div><button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button></div></div></aside>';
  const content=page==='transfer'?transferPage():page==='progress'?progressPage():page==='history'?historyPage():page==='chat'?chatPage(current):page==='updates'?updatesPage():page==='speed-test'?speedTestPage():settingsPage();
@@ -312,13 +316,16 @@ function attachmentStatus(task){
  return {completed:'文件已校验',failed:'传输失败',cancelled:'已取消',rejected:'已拒绝',waiting:'等待接收',queued:'等待发送',paused:'已暂停',saving:'正在保存'}[task.state]||'传输中';
 }
 function recentChat(items){
- let start=Math.max(0,items.length-chatLimit);
+ const anchor=chatAnchorId?items.findIndex(item=>item.id===chatAnchorId):-1;
+ if(chatAnchorId&&anchor<0)resetChatPosition();
+ const end=anchor>=0?Math.min(items.length,anchor+31):items.length;
+ let start=Math.max(0,end-chatLimit);
  if(!chatStick&&firstRenderedChatId){
   const previous=items.findIndex(item=>item.id===firstRenderedChatId);
   if(previous>=0)start=Math.min(start,previous);
  }
  firstRenderedChatId=items[start]?.id||'';
- return {messages:items.slice(start),hasEarlier:start>0};
+ return {messages:items.slice(start,end),hasEarlier:start>0};
 }
 function chatMessages(items){
  let previousDay='';
@@ -331,8 +338,47 @@ function chatMessages(items){
    heading='<div class="chat-day" data-render-key="chat-day-'+day+'"><time datetime="'+day+'">'+esc(label)+'</time></div>';
    previousDay=day;
   }
-  return heading+chatBubble(item);
+  return heading+chatBubble(item,item.id===chatAnchorId);
  }).join('');
+}
+function chatSearchContent(){
+ const query=chatSearchQuery.trim().toLocaleLowerCase(),items=query?currentConversation()?.items||[]:[];
+ const matches=[];
+ let count=0;
+ for(let index=items.length-1;index>=0;index--){
+  const item=items[index];
+  const value=item.kind==='text'?item.chatText:
+   item.files.find(file=>file.name.toLocaleLowerCase().includes(query))?.name||item.name;
+  if(!value)continue;
+  const found=value.toLocaleLowerCase().indexOf(query);
+  if(found<0)continue;
+  count++;
+  if(matches.length===30)continue;
+  const from=Math.max(0,found-22),to=Math.min(value.length,found+Math.max(query.length,64));
+  const excerpt=(from?'…':'')+value.slice(from,to)+(to<value.length?'…':'');
+  matches.push('<button class="chat-search-hit" data-chat-locate="'+esc(item.id)+'">'+icon(item.kind==='text'?'history':'file')+
+   '<span class="grow"><b dir="auto">'+esc(excerpt)+'</b><small>'+esc((item.direction==='send'?'发送':'接收')+' · '+messageTime(item.created))+'</small></span>'+icon('arrow')+'</button>');
+ }
+ const status=!query?'输入消息内容或文件名。':count?(count>matches.length?count+' 条 · 最近 '+matches.length+' 条':'找到 '+count+' 条记录'):'没有找到相关记录。';
+ return '<header class="chat-search-heading"><h2>查找记录</h2><button class="icon-btn" data-action="close-modal" aria-label="关闭查找">'+icon('close')+'</button></header>'+
+  '<label class="send-search">'+icon('search')+'<input id="chat-search" type="search" maxlength="100" aria-label="搜索本会话" placeholder="消息内容或文件名" value="'+esc(chatSearchQuery)+'"></label>'+
+  '<p class="chat-search-summary" role="status">'+status+'</p>'+
+  (matches.length?'<div class="chat-search-list" role="group" aria-label="搜索结果">'+matches.join('')+'</div>':'');
+}
+function locateChatMessage(id){
+ if(page!=='chat'||modalType!=='chat-search')return;
+ if(!conversationTasks().some(item=>item.id===id)){patchModalContent(chatSearchContent(),'chat-search');toast('这条记录已移除');return;}
+ resetChatPosition();
+ chatStick=false;
+ chatAnchorId=id;
+ closeModal();
+ render();
+ const log=document.getElementById('chat-log'),target=log?.querySelector('.is-found');
+ if(!target)return;
+ const offset=target.getBoundingClientRect().top-log.getBoundingClientRect().top;
+ const zoom=Math.max(.1,log.getBoundingClientRect().height/Math.max(1,log.offsetHeight));
+ log.scrollTop+=offset/zoom-Math.max(0,(log.clientHeight-target.offsetHeight)/2);
+ target.focus({preventScroll:true});
 }
 function fileUsable(f,t){return state.self.platform==='Windows'&&['completed','failed','cancelled','rejected'].includes(t.state)&&!f.deleted&&(f.canOpen??(t.direction==='receive'&&!!t.folder));}
 function documentFile(f,t,chat=false){
@@ -347,7 +393,7 @@ function visibleRecords(){
  if(page==='history')return state.tasks;
  return page==='progress'?shownProgressTasks():[];
 }
-function chatBubble(t){const text=t.kind==='text';return '<article class="chat-message '+(t.direction==='send'?'outgoing':'incoming')+'" data-render-key="chat-'+esc(t.id)+'"><div class="chat-message-body">'+(text?'<p class="chat-text" dir="auto">'+esc(t.chatText)+'</p>':(t.files.length===1&&t.files[0].name===t.name?'':'<div class="chat-attachment-title">'+icon('folder')+'<b>'+esc(t.name)+'</b></div>')+'<div class="chat-files">'+(expanded.has(t.id)?visibleFiles(t):t.files.slice(0,3)).map(f=>chatFile(f,t)).join('')+'</div>'+(expanded.has(t.id)?moreFilesButton(t):'')+(t.files.length>3?'<button class="btn secondary" data-expand="'+esc(t.id)+'" aria-expanded="'+expanded.has(t.id)+'">'+(expanded.has(t.id)?'合并文件':'展开文件（'+t.files.length+'）')+'</button>':''))+'<div class="chat-message-meta"><time title="'+esc(t.created)+'">'+esc(messageTime(t.created))+'</time><span>'+esc(text?chatStatus(t):attachmentStatus(t))+'</span>'+(text&&recordEligible(t)?'<button class="chat-delete-inline" data-delete-record="'+esc(t.id)+'" aria-label="删除此条消息" title="删除此条消息">'+icon('trash')+'</button>':'')+'</div>'+(t.state==='failed'?'<p class="chat-failure">'+esc(t.message||'连接中断')+'</p>':'')+'<div class="chat-message-actions">'+(recordMode&&recordEligible(t)?'<button class="btn secondary" data-select-record="'+esc(t.id)+'" role="checkbox" aria-checked="'+recordSelection.has(t.id)+'">'+icon(recordSelection.has(t.id)?'check':'plus')+(recordSelection.has(t.id)?'已选中':'选择记录')+'</button>':'')+(text&&t.state==='failed'&&t.direction==='send'?'<button class="btn secondary" data-chat-retry="'+esc(t.id)+'">'+icon('refresh')+'重试</button>':'')+(!text&&t.state==='failed'&&t.direction==='send'?'<button class="btn secondary" data-retry="'+esc(t.id)+'">重试文件</button>':'')+(t.direction==='receive'&&t.folder?'<button class="btn secondary" data-open="'+esc(t.id)+'">'+icon('folder')+'打开位置</button><button class="btn secondary" data-delete="'+esc(t.id)+'" aria-label="删除接收文件">'+icon('trash')+'删除文件</button>':'')+(!text&&recordEligible(t)?'<button class="btn secondary" data-delete-record="'+esc(t.id)+'" aria-label="删除此条记录">'+icon('trash')+'删除记录</button>':'')+'</div></div></article>'}
+function chatBubble(t,located=false){const text=t.kind==='text';return '<article '+(located?'tabindex="-1" ':'')+'class="chat-message '+(t.direction==='send'?'outgoing':'incoming')+(located?' is-found':'')+'" data-render-key="chat-'+esc(t.id)+'"><div class="chat-message-body">'+(text?'<p class="chat-text" dir="auto">'+esc(t.chatText)+'</p>':(t.files.length===1&&t.files[0].name===t.name?'':'<div class="chat-attachment-title">'+icon('folder')+'<b>'+esc(t.name)+'</b></div>')+'<div class="chat-files">'+(expanded.has(t.id)?visibleFiles(t):t.files.slice(0,3)).map(f=>chatFile(f,t)).join('')+'</div>'+(expanded.has(t.id)?moreFilesButton(t):'')+(t.files.length>3?'<button class="btn secondary" data-expand="'+esc(t.id)+'" aria-expanded="'+expanded.has(t.id)+'">'+(expanded.has(t.id)?'合并文件':'展开文件（'+t.files.length+'）')+'</button>':''))+'<div class="chat-message-meta"><time title="'+esc(t.created)+'">'+esc(messageTime(t.created))+'</time><span>'+esc(text?chatStatus(t):attachmentStatus(t))+'</span>'+(text&&recordEligible(t)?'<button class="chat-delete-inline" data-delete-record="'+esc(t.id)+'" aria-label="删除此条消息" title="删除此条消息">'+icon('trash')+'</button>':'')+'</div>'+(t.state==='failed'?'<p class="chat-failure">'+esc(t.message||'连接中断')+'</p>':'')+'<div class="chat-message-actions">'+(recordMode&&recordEligible(t)?'<button class="btn secondary" data-select-record="'+esc(t.id)+'" role="checkbox" aria-checked="'+recordSelection.has(t.id)+'">'+icon(recordSelection.has(t.id)?'check':'plus')+(recordSelection.has(t.id)?'已选中':'选择记录')+'</button>':'')+(text&&t.state==='failed'&&t.direction==='send'?'<button class="btn secondary" data-chat-retry="'+esc(t.id)+'">'+icon('refresh')+'重试</button>':'')+(!text&&t.state==='failed'&&t.direction==='send'?'<button class="btn secondary" data-retry="'+esc(t.id)+'">重试文件</button>':'')+(t.direction==='receive'&&t.folder?'<button class="btn secondary" data-open="'+esc(t.id)+'">'+icon('folder')+'打开位置</button><button class="btn secondary" data-delete="'+esc(t.id)+'" aria-label="删除接收文件">'+icon('trash')+'删除文件</button>':'')+(!text&&recordEligible(t)?'<button class="btn secondary" data-delete-record="'+esc(t.id)+'" aria-label="删除此条记录">'+icon('trash')+'删除记录</button>':'')+'</div></div></article>'}
 function conversationRows(groups){return groups.map(g=>{
  const last=g.latest,preview=last?.kind==='text'?last.chatText:last?.name||'开始加密聊天';
  return '<button class="chat-conversation" data-chat-key="'+esc(g.key)+'" data-render-key="conversation-'+esc(g.key)+'"><span class="device-avatar '+(g.device?.platform==='Android'?'android':'')+'">'+icon(g.device?deviceIcon(g.device.platform):'history')+'</span><span class="grow"><span class="conversation-top"><b>'+esc(g.name)+'</b><time>'+esc(last?shortTime(last.created):'')+'</time></span><small class="conversation-preview">'+esc(preview)+'</small><span class="conversation-bottom"><small><i class="presence-dot '+(g.device?.online?'online':'')+'"></i>'+esc(g.device?.online?'在线':g.device?'离线':'历史会话')+'</small><small>'+g.count+' 条</small></span></span>'+icon('arrow','conversation-arrow')+'</button>';
@@ -360,9 +406,10 @@ function historyPage(){
  '<section class="conversation-list" aria-label="设备会话">'+(shown.length?conversationRows(shown):query?'<div class="empty release-empty"><span class="empty-emblem">'+icon('search')+'</span><h2>没有找到设备</h2><p>试试设备名称，或清除搜索查看全部会话。</p><button class="btn secondary" data-action="clear-conversation-search">清除搜索</button></div>':'<div class="empty release-empty"><span class="empty-emblem">'+icon('history')+'</span><h2>从第一次连接开始</h2><p>完成配对后，可以在这里发送消息，找回图片与文件记录。</p><button class="btn primary" data-page="transfer">前往传输中心</button></div>')+'</section>'+footer();
 }
 function chatPage(current){if(!current)return '<div class="empty"><p>此会话已不存在。</p><button class="btn secondary" data-action="secondary-back">返回</button></div>';const canSend=!!(current.device?.trusted&&current.device.online);const {messages,hasEarlier}=recentChat(current.items);
- return '<section class="chat-layout chat-selected standalone-chat"><div class="chat-thread" data-render-key="thread-'+esc(chatKey)+'">'+(recordMode?'<div class="chat-selection-bar">'+recordToolbar(true)+'</div>':'')+'<div class="chat-log" id="chat-log" tabindex="0" role="log" aria-label="聊天内容">'+(hasEarlier?'<button class="btn secondary load-earlier" data-action="chat-more">加载更早记录</button>':'')+(current.items.length?chatMessages(messages):'<div class="empty chat-welcome">'+icon('lock')+'<h2>开始安全对话</h2><p>文字、图片和文件，只在已认证的设备之间传输。</p></div>')+'</div><div class="chat-scroll-actions"><button class="btn secondary chat-jump" id="chat-latest" data-action="chat-latest" '+(chatStick||recordMode?'hidden':'')+'>'+icon('chevron')+'最新消息</button></div>'+(!canSend?'<div class="chat-offline" role="status">'+icon('wifi')+'设备离线或信任已移除。草稿会保留，连接后可发送。</div>':'')+'<div class="chat-composer"><textarea id="chat-text" data-render-key="draft-'+esc(chatKey)+'" rows="2" maxlength="16384" placeholder="'+(canSend?'输入消息…':'可继续编辑草稿，设备在线后发送')+'" aria-label="消息内容"></textarea><div class="chat-compose-actions"><small>Ctrl / ⌘ + Enter 发送 · 最多 16 KB</small><button class="btn secondary" aria-label="添加附件" title="添加附件" data-chat-files="'+esc(current.peerId)+'" '+(!canSend?'disabled':'')+'>'+icon('plus')+'<span>附件</span></button><button class="btn primary" aria-label="发送消息" title="发送消息" data-chat-send="'+esc(current.peerId)+'" '+(sendingChats.has(chatKey)?'aria-busy="true" disabled':!canSend?'disabled':'')+'>'+icon('arrow')+'发送</button></div></div></div></section>';
+ return '<section class="chat-layout chat-selected standalone-chat"><div class="chat-thread" data-render-key="thread-'+esc(chatKey)+'">'+(recordMode?'<div class="chat-selection-bar">'+recordToolbar(true)+'</div>':'')+'<div class="chat-log" id="chat-log" tabindex="0" role="log" aria-label="聊天内容">'+(hasEarlier?'<button class="btn secondary load-earlier" data-action="chat-more">加载更早记录</button>':'')+(current.items.length?chatMessages(messages):'<div class="empty chat-welcome">'+icon('lock')+'<h2>开始安全对话</h2><p>文字、图片和文件，只在已认证的设备之间传输。</p></div>')+'</div><div class="chat-scroll-actions"><button class="btn secondary chat-jump" id="chat-latest" data-action="chat-latest" '+(chatStick||recordMode?'hidden':'')+'>'+icon('chevron')+(chatAnchorId?'回到最新消息':'最新消息')+'</button></div>'+(!canSend?'<div class="chat-offline" role="status">'+icon('wifi')+'<span>设备离线或信任已移除。草稿会保留，连接后可发送。</span><button class="text-btn" data-action="refresh-devices">刷新设备</button></div>':'')+'<div class="chat-composer"><textarea id="chat-text" data-render-key="draft-'+esc(chatKey)+'" rows="2" maxlength="16384" placeholder="'+(canSend?'输入消息…':'可继续编辑草稿，设备在线后发送')+'" aria-label="消息内容"></textarea><div class="chat-compose-actions"><small>Ctrl / ⌘ + Enter 发送 · 最多 16 KB</small><button class="btn secondary" aria-label="添加附件" title="添加附件" data-chat-files="'+esc(current.peerId)+'" '+(!canSend?'disabled':'')+'>'+icon('plus')+'<span>附件</span></button><button class="btn primary" aria-label="发送消息" title="发送消息" data-chat-send="'+esc(current.peerId)+'" '+(sendingChats.has(chatKey)?'aria-busy="true" disabled':!canSend?'disabled':'')+'>'+icon('arrow')+'发送</button></div></div></div></section>';
 }
-function openChat(key,from=page){chatReturnPage=from==='chat'?chatReturnPage:from;chatKey=key;chatLimit=60;chatStick=true;firstRenderedChatId='';page='chat';recordMode=false;recordSelection.clear();render();}
+function resetChatPosition(){chatAnchorId='';chatLimit=60;chatStick=true;firstRenderedChatId='';}
+function openChat(key,from=page){chatReturnPage=from==='chat'?chatReturnPage:from;chatKey=key;resetChatPosition();page='chat';recordMode=false;recordSelection.clear();render();}
 function toggleChatRecords(){const log=document.getElementById('chat-log'),top=log?.scrollTop||0;routeEntry?.finish();chatStick=false;recordMode=!recordMode;recordSelection.clear();render();if(log)log.scrollTop=top;}
 let speedPeerId='',speedRunId='',speedStarting=false,speedError='',speedEpoch=0;
 const speedBusy=s=>['connecting','negotiating','upload','download'].includes(s?.phase);
@@ -433,7 +480,7 @@ function resizeChat(){
 window.addEventListener('resize',queueChatResize);window.visualViewport?.addEventListener('resize',queueChatResize);window.visualViewport?.addEventListener('scroll',queueChatResize);
 
 function updateChatScroll(log){
- chatStick=log.scrollHeight-log.scrollTop-log.clientHeight<60;
+ chatStick=!chatAnchorId&&log.scrollHeight-log.scrollTop-log.clientHeight<60;
  const latest=document.getElementById('chat-latest');
  const hideLatest=chatStick||recordMode;
  if(latest&&latest.hidden!==hideLatest)latest.hidden=hideLatest;
@@ -465,7 +512,7 @@ function sizingSettings(){return [['uiScale','界面缩放','调整整体控件�
 function updatesPage(){
  return '<div class="update-layout">'+updateSettings()+
   '<section class="settings-group current-release"><h2>'+icon('log')+'当前版本更新日志</h2><b class="update-version">Lantern '+
-  esc(state.version||'0.7.23')+'</b><pre class="release-notes">'+esc(state.releaseNotes?.notes||'')+'</pre></section></div>';
+  esc(state.version||'0.7.24')+'</b><pre class="release-notes">'+esc(state.releaseNotes?.notes||'')+'</pre></section></div>';
 }
 const updateServers={auto:'自动选择',github:'GitHub',gitee:'Gitee'};
 const updateChannels={stable:'稳定版',beta:'测试版'};
@@ -531,8 +578,8 @@ function settingsPage(){const windows=state.self.platform==='Windows',apple=appl
 <section class="settings-group" data-render-key="settings-appearance"><h2>${icon('eye')} 外观</h2><div class="setting"><div class="grow"><b>颜色主题</b><small>同步应用与系统栏配色。</small></div><select data-setting="theme" aria-label="颜色主题">${[['system','跟随系统'],['dark','深色模式'],['light','浅色模式']].map(([v,l])=>'<option value="'+v+'" '+((state.settings.theme||'system')===v?'selected':'')+'>'+l+'</option>').join('')}</select></div>${sizingSettings()}</section>
 <section class="settings-group" data-render-key="settings-files"><h2>${icon('log')} 文件与记录</h2>${settingToggle('thumbnails','图片和视频缩略图','在本机生成预览；接收文件完成校验后才生成。')}${settingToggle('history','保存聊天与传输记录','文字、记录与缩略图加密保存在本机；关闭后仅保留当前会话。')}${windows?settingToggle('allowFileDrop','拖拽文件发送','拖入窗口任意位置，再选择一个或多个发送对象。'):''}<details class="advanced-settings" data-motion-disclosure><summary>高级传输选项</summary><div class="setting"><div class="grow"><b>发送速度上限</b><small>为其他应用预留带宽。</small></div><select data-setting="limitMiB" aria-label="发送速度上限">${[[0,'不限速'],[10,'10 MB/s'],[30,'30 MB/s'],[60,'60 MB/s']].map(([v,l])=>'<option value="'+v+'" '+(Number(state.settings.limitMiB)===v?'selected':'')+'>'+l+'</option>').join('')}</select></div></details></section>
 ${apple?'':`<section class="settings-group" data-render-key="settings-notifications"><h2>${icon('bell')} 通知</h2>${windows?settingToggle('windowsNotifications','系统传输通知','显示传输开始、完成与失败；点击通知返回应用。')+settingToggle('windowsTaskbarProgress','任务栏传输进度','在任务栏图标显示任务合并进度。'):settingToggle('transferNotifications','通知栏传输状态','合并显示进度、速度与结果；传输期间请保持应用运行。')}${settingToggle('notificationDetails','在通知中显示文件名','默认关闭，保护通知区域的内容隐私。')}${windows?'':'<div class="setting"><div class="grow"><b>系统通知权限</b><small>'+(status.enabled?'已允许系统通知，可在系统设置管理。':'需要系统授权才能显示通知栏传输状态。')+'</small></div><button class="btn secondary" data-action="'+(status.enabled?'notification-settings':'notification-permission')+'">'+(status.enabled?'系统设置':'允许通知')+'</button></div>'}</section>`}
-<section class="settings-group" data-render-key="settings-updates"><h2>${icon('download')} 软件更新</h2><div class="setting"><div class="grow"><b>更新中心</b><small>${state.ota?.phase==='ready'?'安装包已就绪':state.ota?.phase==='available'?'发现可用更新':['downloading','verifying'].includes(state.ota?.phase)?'正在下载和校验更新':('当前版本 '+esc(state.version||'0.7.23'))}</small></div><button class="btn secondary" data-action="open-updates">打开更新中心</button></div></section>
-<section class="settings-group brand-about" data-render-key="settings-about"><div class="about-brand">${icon('bolt')}<div class="grow"><h2>闪传 Lantern <span class="version-pill">${esc(state.version||'0.7.23')}</span></h2></div><div class="about-actions"><button class="btn ghost" data-action="open-guide">使用引导</button><button class="btn ghost" data-action="privacy-info">隐私说明</button></div></div><div class="about-security"><p><b>设备之间直接分享</b><br>文字与文件在局域网内加密传输，无云端中转。设备昵称与发现广播不是身份凭证。</p><p><b>每次连接都验证身份</b><br>记住设备密钥；连接通过认证后才能接收。传输加密并校验完整性，移除信任后需重新配对。</p></div></section></div>${footer()}`}
+<section class="settings-group" data-render-key="settings-updates"><h2>${icon('download')} 软件更新</h2><div class="setting"><div class="grow"><b>更新中心</b><small>${state.ota?.phase==='ready'?'安装包已就绪':state.ota?.phase==='available'?'发现可用更新':['downloading','verifying'].includes(state.ota?.phase)?'正在下载和校验更新':('当前版本 '+esc(state.version||'0.7.24'))}</small></div><button class="btn secondary" data-action="open-updates">打开更新中心</button></div></section>
+<section class="settings-group brand-about" data-render-key="settings-about"><div class="about-brand">${icon('bolt')}<div class="grow"><h2>闪传 Lantern <span class="version-pill">${esc(state.version||'0.7.24')}</span></h2></div><div class="about-actions"><button class="btn ghost" data-action="open-guide">使用引导</button><button class="btn ghost" data-action="privacy-info">隐私说明</button></div></div><div class="about-security"><p><b>设备之间直接分享</b><br>文字与文件在局域网内加密传输，无云端中转。设备昵称与发现广播不是身份凭证。</p><p><b>每次连接都验证身份</b><br>记住设备密钥；连接通过认证后才能接收。传输加密并校验完整性，移除信任后需重新配对。</p></div></section></div>${footer()}`}
 let modalOrigin=null,modalRevision=0;
 function patchModalContent(html,type){
  const titlePattern=/<h2(?=\s|>)(?![^>]*\bid=)/i;
@@ -540,7 +587,7 @@ function patchModalContent(html,type){
  const label={pair:'配对设备',send:'选择发送对象',release:'版本更新说明',network:'连接局域网',preview:'文件预览','first-guide':'使用引导','update-invite':'软件更新','ota-clear':'删除更新安装包'}[type]||'任务操作';
  const name=named?'aria-labelledby="lantern-dialog-title"':`aria-label="${label}"`;
  const content=named?html.replace(titlePattern,'<h2 id="lantern-dialog-title"'):html;
- const layout={preview:'file-preview-modal','first-guide':'guide-modal',send:'send-modal'}[type]||'';
+ const layout={preview:'file-preview-modal','first-guide':'guide-modal',send:'send-modal','chat-search':'chat-search-modal'}[type]||'';
  window.LanternDOM.patch(modal,`<section class="modal ${layout}" role="dialog" aria-modal="true" ${name}>${content}</section>`);
  return modal.querySelector('.modal');
 }
@@ -554,7 +601,7 @@ function openModal(html,type){
  if(opening&&!document.hidden&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&surface?.animate)
   surface.animate([{opacity:0,transform:'translateY(6px) scale(.99)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:160,easing:motionEase});
  if(opening||changed||!modal.contains(document.activeElement)){
-  let first=null;
+  let first=type==='chat-search'?surface.querySelector('#chat-search'):null;
   if(inputRoot.dataset.inputModality==='keyboard'){
    const address=surface.querySelector('#peer-address');
    if(type==='pair'&&address)first=address.value?surface.querySelector('#peer-code'):address;
@@ -862,8 +909,15 @@ async function previewSelectedFile(id){
  request.loading=false;request.result=result;refreshSendDialog();
 }
 document.addEventListener('click',async e=>{if(fileMenu&&!fileMenu.contains(e.target))closeFileMenu(false);else if(fileMenu&&e.target.closest('button'))closeFileMenu();const b=e.target.closest('button');if(!b||modalType==='send'&&sendSubmitting&&modal.contains(b))return;
+if(b.dataset.action==='chat-search'){
+ chatSearchQuery='';
+ openModal(chatSearchContent(),'chat-search');
+ return;
+}
+if(b.dataset.chatLocate){locateChatMessage(b.dataset.chatLocate);return;}
 if(b.dataset.action==='chat-latest'){
- chatStick=true;
+ if(chatAnchorId)resetChatPosition();
+ else chatStick=true;
  render();
  scrollChat();
  if(inputRoot.dataset.inputModality==='keyboard')document.getElementById('chat-log')?.focus({preventScroll:true});
@@ -1017,7 +1071,12 @@ if(b.dataset.decision){
 if(b.dataset.action==='open-network-settings'){const result=await command('open-network-settings');if(result?.ok)closeModal();return}
 switch(b.dataset.action){case'speed-retry':await beginSpeedTest();break;case'speed-stop':await stopSpeedTest();break;case'connection-help':connectionHelp();break;case'help-manual-pair':closeModal();await pairModal('send');break;case'privacy-info':privacyInfo();break;case'dismiss-connection-banner':connectionBannerDismissed=true;render();break;case'clear-conversation-search':conversationSearch='';render();document.getElementById('conversation-search')?.focus({preventScroll:true});break;case'remove-offline-targets':sendTargets=new Set([...sendTargets].filter(id=>state.devices.some(d=>d.id===id&&d.online&&d.trusted)));refreshSendDialog();break;case'release-done':await acknowledgeRelease();closeModal();break;case'chat-back':case'secondary-back':backFromSecondary();break;case'view-update':closeModal();openUpdates();break;case'open-updates':openUpdates();break;case'chat-record-menu':case'chat-manage':toggleChatRecords();break;case'chat-more':{const log=document.getElementById('chat-log'),height=log?.scrollHeight||0,top=log?.scrollTop||0;chatLimit+=60;chatStick=false;render();const next=document.getElementById('chat-log');if(next)next.scrollTop=top+next.scrollHeight-height;break;}case'ota-check':if(state.mode==='preview')toast('请在客户端中检查服务器更新');else await command('ota-check');break;case'ota-download':case'ota-install':case'ota-cancel':case'ota-clear':await command(b.dataset.action);break;case'pair-from-send':resumeSend=true;await pairModal();break;case'record-mode':recordMode=!recordMode;recordSelection.clear();render();break;case'select-records':recordSelection=new Set(visibleRecords().filter(recordEligible).map(t=>t.id).slice(0,recordSelectionLimit));render();break;case'delete-records':if(recordSelection.size)openModal(`${modalTop('log')}<h2>删除 ${recordSelection.size} 条记录？</h2><p>仅删除所选已结束任务的记录，源文件和接收文件都会保留。</p><div class="modal-actions"><button class="btn secondary" data-action="close-modal">取消</button><button class="btn danger" data-action="confirm-records">仅删除记录</button></div>`,'delete-records');break;case'confirm-records':{b.disabled=true;const ids=[...recordSelection];const result=state.mode==='preview'?{ok:true}:await command('delete-records',{ids,confirmed:true});if(result?.ok){if(state.mode==='preview')state.tasks=state.tasks.filter(t=>!recordSelection.has(t.id));recordSelection.clear();recordMode=false;closeModal();render()}else b.disabled=false;break;}case'reset-receive-folder':case'test-windows-notification':if(state.mode==='preview')toast('请在 Windows 客户端使用此功能');else await command(b.dataset.action);break;case'test-transfer-notification':case'notification-permission':case'notification-settings':if(state.mode==='preview')toast('请在安卓客户端测试系统通知');else await command(b.dataset.action);break;case'refresh-devices':await refreshDevices();break;case'show-devices':document.getElementById('home-devices')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});break;case'choose-receive-folder':await command('choose-receive-folder');break;case'pair':await pairModal();break;case'close-modal':{const revision=modalRevision;if(['pair','pair-confirm','pair-wait'].includes(modalType)&&state.mode!=='preview')await command('close-pairing');if(modalType==='release')await acknowledgeRelease();if(revision===modalRevision&&!modal.hidden)closeModal();break;}case'pick':chatSendReturn='';await pickFiles();break;case'collapse':{const tasks=shownProgressTasks().filter(t=>t.files.length),collapse=expandedIn(tasks);for(const task of tasks){if(collapse)expanded.delete(task.id);else expanded.add(task.id)}render();break;}case'send-selection':await submitSelection();break;case'refresh-code':if(state.mode!=='preview'){state.pairCode=null;await command('close-pairing')}await pairModal('receive');break;case'connect-pair':{const address=document.getElementById('peer-address').value.trim(),code=document.getElementById('peer-code').value.trim();if(!/^\d{8}$/.test(code)){toast('请输入 8 位数字匹配码');break}if(!isIPv4Address(address)){toast('请输入对方的局域网 IPv4 地址');break}if(state.mode==='preview'){toast('这是配对流程预览，请在原生应用中建立连接');break}b.disabled=true;b.textContent='正在验证匹配码…';const endpoint=pairEndpoint?.address===address&&Number.isInteger(pairEndpoint.port)&&pairEndpoint.port>0&&pairEndpoint.port<=65535?{port:pairEndpoint.port}:{};
 const r=await command('pair',{address,code,...endpoint});if(r?.ok)pairWaiting();else{b.disabled=false;b.textContent='验证并配对'}break}case'clear-history':openModal(`${modalTop('trash')}<h2>清空传输记录？</h2><p>将移除已结束任务的记录。已接收的文件仍保留在接收目录。</p><div class="modal-actions"><button class="btn secondary" data-action="close-modal">取消</button><button class="btn danger" data-action="confirm-clear">清空记录</button></div>`,'clear');break;case'confirm-clear':{b.disabled=true;if(state.mode==='preview'){state.tasks=state.tasks.filter(t=>!['completed','failed','cancelled','rejected'].includes(t.state));render()}else{const r=await command('clear-history');if(!r?.ok){b.disabled=false;break;}}closeModal();toast('已清空任务记录');break;}case'self':openModal(`${modalTop('monitor')}<h2>${esc(state.self.name)}</h2><p>平台：${esc(state.self.platform)}<br>局域网地址：${esc(state.address)}<br>传输端口：${state.port||53319}<br>${state.mode==='preview'?'示例设备信息':'收到文件保存在接收文件夹，可在任务中打开。'}</p>`,'info');break}});
-document.addEventListener('input',e=>{if(e.target.id==='send-device-search'){sendQuery=e.target.value;refreshSendDialog();return;}if(e.target.id==='conversation-search'){conversationSearch=e.target.value;render();return;}if(e.target.id==='chat-text')chatDrafts.set(chatKey,e.target.value)});
+document.addEventListener('input',e=>{
+ if(e.target.id==='send-device-search'){sendQuery=e.target.value;refreshSendDialog();return;}
+ if(e.target.id==='conversation-search'){conversationSearch=e.target.value;render();return;}
+ if(e.target.id==='chat-search'&&modalType==='chat-search'){chatSearchQuery=e.target.value;patchModalContent(chatSearchContent(),'chat-search');return;}
+ if(e.target.id==='chat-text')chatDrafts.set(chatKey,e.target.value);
+});
 document.addEventListener('keydown',e=>{if(e.target.id==='chat-text'&&e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&!e.isComposing){e.preventDefault();document.querySelector('[data-chat-send]')?.click()}});
 document.addEventListener('scroll',e=>{if(e.target.id==='chat-log')updateChatScroll(e.target)},true);
 document.addEventListener('change',async e=>{

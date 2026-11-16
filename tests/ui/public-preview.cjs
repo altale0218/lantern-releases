@@ -99,6 +99,50 @@ async function checkUpdateStages(p,platform){
  check(await p.locator('.update-release-log').count()===0&&await p.locator('.current-release .release-notes').count()===1,platform+' current version displays only its own notes');
  await p.evaluate(()=>{fixture.ota={phase:'idle'};window.lantern.setState(fixture)});
 }
+async function checkChatSearch(p,platform){
+ await p.evaluate(()=>{
+  window.oldSearchTasks=fixture.tasks;
+  const model=fixture.tasks[0];
+  const items=Array.from({length:170},(_,i)=>({...model,id:'search-'+i,
+   created:new Date(Date.UTC(2025,1,1,10,i)).toISOString().slice(0,19).replace('T',' '),
+   chatText:i===8?'定位目标 <strong>虚构消息</strong>':'虚构聊天内容 '+i}));
+  fixture.tasks=[...items,{...items[7],id:'hidden-peer',conversationKey:'key-b',peerId:'b'.repeat(32),chatText:'定位目标 其他会话'},
+   {...items[14],id:'search-file',kind:'files',name:'测试文件组',chatText:undefined,
+    files:[{id:'search-txt',name:'Example-Search.TxT',mime:'text/plain',size:16,completed:16}]}];
+  window.lantern.setState(fixture);
+ });
+ await p.locator('.chat-conversation[data-chat-key="key-a"]').click();
+ await route(p,'chat');
+ await p.locator('#chat-text').fill('查找期间保留的虚构草稿');
+ await p.getByRole('button',{name:'查找聊天记录',exact:true}).click();
+ const search=p.getByLabel('搜索本会话');
+ check(await search.evaluate(input=>input===document.activeElement),platform+' conversation search focuses its input');
+ await search.fill('example-search.txt');
+ check((await p.locator('.chat-search-hit').innerText()).includes('Example-Search.TxT'),platform+' search includes attachment names case-insensitively');
+ await search.fill('虚构聊天内容');
+ check(await p.locator('.chat-search-hit').count()===30,platform+' long searches render only 30 newest results');
+ await search.fill('定位目标');
+ check(await p.locator('.chat-search-hit').count()===1&&await p.locator('.chat-search-hit strong').count()===0,platform+' search stays in the authenticated conversation and escapes message markup');
+ await p.locator('[data-chat-locate="search-8"]').click();
+ check(await p.evaluate(()=>{
+  const hit=document.querySelector('.chat-message.is-found'),log=document.getElementById('chat-log');
+  const a=hit?.getBoundingClientRect(),b=log.getBoundingClientRect();
+  return hit===document.activeElement&&hit.dataset.renderKey==='chat-search-8'&&a.bottom>b.top&&a.top<b.bottom;
+ }),platform+' old result opens at the matching record and receives focus');
+ check(await p.locator('#chat-log .chat-message').count()<=60,platform+' jumping to a distant message does not mount intervening history');
+ check(await p.locator('#chat-text').inputValue()==='查找期间保留的虚构草稿',platform+' searching history preserves the draft');
+ await p.evaluate(()=>{
+  const last=fixture.tasks.find(item=>item.id==='search-169');
+  fixture.tasks.push({...last,id:'search-new',created:'2025-02-02 10:00:00',chatText:'新到达的虚构消息'});
+  window.lantern.setState(fixture);
+ });
+ check(await p.locator('.chat-message.is-found').count()===1&&await p.locator('[data-render-key="chat-search-new"]').count()===0,platform+' incoming updates preserve the historical reading position');
+ await p.getByRole('button',{name:'回到最新消息'}).click();
+ check(await p.locator('[data-render-key="chat-search-new"]').count()===1&&await p.locator('.chat-message.is-found').count()===0,platform+' can return to the newest messages');
+ await p.locator('[data-action="secondary-back"]').click();
+ await route(p,'history');
+ await p.evaluate(()=>{fixture.tasks=oldSearchTasks;delete window.oldSearchTasks;window.lantern.setState(fixture)});
+}
 async function checkNavigation(p,platform){
  const progress=p.locator('nav button[data-page="progress"]:visible');
  await p.evaluate(()=>{
@@ -242,6 +286,7 @@ async function checkTouch(p,label){
   await p.locator('button[data-page="history"]:visible').first().click();await route(p,'history');check(await p.locator('#conversation-search').count()===1,platform+' conversation search available');await p.locator('#conversation-search').fill('ANDROID');check(await p.locator('.chat-conversation').count()===1,platform+' platform search is case-insensitive');
   await p.evaluate(()=>{window.searchInput=document.getElementById('conversation-search');for(let i=0;i<30;i++)window.lantern.setState(fixture)});check(await p.evaluate(()=>searchInput===document.getElementById('conversation-search')&&searchInput.value==='ANDROID'),platform+' search and input retained on native snapshots');
   await p.locator('#conversation-search').fill('no-such-device');check(await p.locator('.chat-conversation').count()===0&&await p.locator('.release-empty').count()===1,platform+' filtered empty state');await p.locator('[data-action="clear-conversation-search"]').first().click();check(await p.locator('.chat-conversation').count()===2,platform+' clearing search restores all devices');
+  await checkChatSearch(p,platform);
   await p.locator('button[data-page="settings"]:visible').first().click();await route(p,'settings');await p.locator('[data-action="privacy-info"]').click();check(await p.locator('.privacy-points p').count()===4,platform+' clear offline privacy explanation');check((await p.locator('#modal').innerText()).includes('删除记录与删除实际文件是独立操作'),platform+' record/file deletion distinction explained');await p.locator('#modal [data-action="close-modal"]').first().click();
   await p.evaluate(()=>window.scrollTo(0,0));
   await p.getByLabel('跳到设置分组').selectOption('settings-appearance');
