@@ -68,18 +68,27 @@ jobs:
           startup() {
             code=$1
             version=$2
+            rm -f "$RUNNER_TEMP/lantern-pid.log" "$RUNNER_TEMP/lantern-activity.log"
             device shell dumpsys package "$PACKAGE" | grep -F "versionCode=$code " > "$RUNNER_TEMP/lantern-version.log"
             launcher="$(device shell cmd package query-activities --components --user 0 -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$PACKAGE" | tr -d '\r' | grep -F "$PACKAGE/" | tail -n 1)"
             test -n "$launcher"
             echo "Selected launcher component: $launcher"
+            device shell am force-stop --user 0 "$PACKAGE"
+            device logcat -b crash -c
             device shell am start -W -n "$launcher"
-            for attempt in $(seq 1 20); do
-              if device shell dumpsys activity activities | grep -E "([Tt]opResumedActivity|mResumedActivity).*com\.lantern\.transfer/.*MainActivity" > "$RUNNER_TEMP/lantern-activity.log"; then break; fi
+            for attempt in $(seq 1 30); do
+              if device shell dumpsys activity activities | grep -E "([Tt]opResumedActivity|mResumedActivity).*com\.lantern\.transfer/(\.MainActivity|com\.lantern\.transfer\.MainActivity)" > "$RUNNER_TEMP/lantern-activity.log" && device shell pidof "$PACKAGE" > "$RUNNER_TEMP/lantern-pid.log"; then
+                break
+              fi
               sleep 2
             done
-            test -s "$RUNNER_TEMP/lantern-activity.log"
-            device shell pidof "$PACKAGE" > "$RUNNER_TEMP/lantern-pid.log"
-            test -s "$RUNNER_TEMP/lantern-pid.log"
+            if [ ! -s "$RUNNER_TEMP/lantern-pid.log" ] || [ ! -s "$RUNNER_TEMP/lantern-activity.log" ]; then
+              device shell dumpsys activity activities | grep -E "ResumedActivity|com\.lantern\.transfer" || true
+              device logcat -b crash -d | grep -A 24 -F "Process: $PACKAGE" || true
+              exit 1
+            fi
+            sleep 3
+            device shell pidof "$PACKAGE"
             if device logcat -b crash -d | grep -A 24 -F "Process: $PACKAGE"; then exit 1; fi
             echo "PASS Lantern $version started the native Android main activity on API 37"
           }
@@ -95,4 +104,7 @@ jobs:
           download 0.7.15 df216ce4a9c9d0feffa5fad6f7b203013550c341c3764e819c9bacf5b2723480
           device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.15.apk"
           startup 48 0.7.15
+          download 0.7.16 e40889627779bf30b7de71969a9b7ec55a438ea039d2f7d8cc83d6ffa2beed6a
+          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.16.apk"
+          startup 49 0.7.16
           echo "PASS same-signature upgrade preserved the application package"
