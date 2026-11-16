@@ -76,5 +76,28 @@ jobs:
           pid="$(awk 'END {print $NF}' "$RUNNER_TEMP/lantern-ios-launch.log")"
           [[ "$pid" =~ ^[0-9]+$ ]]
           sleep 10
-          kill -0 "$pid"
+          if ! kill -0 "$pid" 2>/dev/null; then
+            echo "iPhone simulator app exited early; collecting only relevant failure details"
+            executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")"
+            xcrun simctl spawn "$device" log show --last 2m --style compact \
+              --predicate "process == \"$executable\" OR eventMessage CONTAINS[c] \"$app_id\"" \
+              | grep -Ei 'Unhandled|Abort|dyld|Fatal|Symbol not found|Exception|crashed|termination|exited' | tail -n 25 || true
+            find "$HOME/Library/Logs/DiagnosticReports" -type f -name '*Lantern*.ips' -mmin -10 -print0 | while IFS= read -r -d '' report; do
+              python3 - "$report" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              stream.readline()
+              data=json.load(stream)
+          exception=data.get("exception") or {}
+          termination=data.get("termination") or {}
+          print("Crash signal:", exception.get("type"), exception.get("signal"))
+          print("Crash termination:", termination.get("namespace"), termination.get("code"), termination.get("indicator"))
+          for detail in data.get("asi", {}).values():
+              for line in detail:
+                  if any(marker in line for marker in ("Symbol not found", "Library not loaded", "no suitable image", "Assertion failed")):
+                      print(line.rsplit("/",1)[-1][:180])
+          PY
+            done
+            exit 1
+          fi
           echo "PASS iPhone simulator launch completed, and the process is still running"
