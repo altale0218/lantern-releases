@@ -7,7 +7,7 @@
 请打开本仓库的 Releases / 发行版，选择 **0.7.4 测试版**。
 
 - Android 下载 Lantern-Android.apk。此次发布的 Android versionCode 为 37。
-- Windows 下载 Lantern-Windows.zip，解压后运行 Lantern-Windows.exe。
+- Windows 下载 Lantern-Windows.zip，解压后运行 Lantern.exe。
 - SHA256SUMS.txt 可用于校验下载的两个文件。
 
 ## 使用
