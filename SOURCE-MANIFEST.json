@@ -1,0 +1,94 @@
+{
+  "version": "0.7.4",
+  "scope": "partial-ui-source",
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "4840e015624a40093da5a702a90cb63ba78380c744ed2e406558c1a00fe0f9f3"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "dcc2943ddddf5269bfcfc4fd6df6c587cad39909f6dbd5a7beff627e802d7920"
+    },
+    {
+      "path": "licenses/BouncyCastle-LICENSE.md",
+      "sha256": "afc1653b666b64a2386b7b9b914406904f45c20b9571765d8c1121b513313179"
+    },
+    {
+      "path": "licenses/Dotnet-LICENSE.txt",
+      "sha256": "d7a68596ab69b06f51ca278a6545148e4269a9381c26d597c13df5d88e08cf5b"
+    },
+    {
+      "path": "licenses/Dotnet-THIRD-PARTY-NOTICES.txt",
+      "sha256": "19c19dcac9f3ee6302cfbc6745bb8e79f08efc4c933eb8dc5509bf14b88347ec"
+    },
+    {
+      "path": "licenses/Playwright-LICENSE.txt",
+      "sha256": "45873d00a0dd243596deb4aa23b2493b3d1f0671921bf2538ea431d7380220eb"
+    },
+    {
+      "path": "licenses/WebView2-LICENSE.txt",
+      "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55"
+    },
+    {
+      "path": "licenses/WebView2-NOTICE.txt",
+      "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+    },
+    {
+      "path": "README.md",
+      "sha256": "8bdab4e8559d495aab966cc5939231c4af3d289472aa1b6e3410206d0c3d84da"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "146b5246f47ccc82295dbdb7d695b47404838f8349943ed3139692529b7e40c3"
+    },
+    {
+      "path": "ui/app.js",
+      "sha256": "75e60e46b6aead33661be34d7b4bb2681e9bf48da1353d4d32b0d4e36fe0d3d4"
+    },
+    {
+      "path": "ui/coast.svg",
+      "sha256": "22a454905c53714fa497ede9f8eb8097435534a26578232ee51b8ced8a0cad67"
+    },
+    {
+      "path": "ui/dom.js",
+      "sha256": "be190df878adbb75f18ca29726d401570dae0b613dccc1f4447ec8282c92aedd"
+    },
+    {
+      "path": "ui/experience.css",
+      "sha256": "084c9239fbfa3da33ed1b5540c99a111db81dca8095f48633ca39c920d9ecbd2"
+    },
+    {
+      "path": "ui/icon.svg",
+      "sha256": "977592f0ed3bb8edebd196289fa0d8d67f869b006019fe128f69cea48c7edddf"
+    },
+    {
+      "path": "ui/index.html",
+      "sha256": "71c2aa37bc855a503ca1ef46cd6ae0f335e08f03a1e1b177986f1c46ed1b47c6"
+    },
+    {
+      "path": "ui/layout.css",
+      "sha256": "5f7da0a8d995a9f0d8714327f9fbcefa11b9fd19d0e16d579c8b6e41e0b0afa3"
+    },
+    {
+      "path": "ui/mountain.svg",
+      "sha256": "fc8479eee4083920bd30a34502e80181ab75c7f2cb5a0e5ac5e4f21b90dde255"
+    },
+    {
+      "path": "ui/polish.css",
+      "sha256": "c4798637d2fae2d02dacc7b67fba1e1ee0b0474b57afa6a52bfb968a30347879"
+    },
+    {
+      "path": "ui/style.css",
+      "sha256": "29aeb1abf46a54f45cf9e867bbd85874a177b4ef1a64565903910d8d1d7bdb69"
+    },
+    {
+      "path": "ui/theme.css",
+      "sha256": "03559b7da5b0b2df8c92b4acac07c6adb25245763563950517dc21afd3ce7c0b"
+    },
+    {
+      "path": "ui/theme.js",
+      "sha256": "f911dc14615779650f635a82f3059d012335b0fdbf581254236e9f53347a96c2"
+    }
+  ]
+}
