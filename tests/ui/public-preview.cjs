@@ -149,7 +149,18 @@ async function checkChatSearch(p,platform){
  });
  await p.locator('.chat-conversation[data-chat-key="key-a"]').click();
  await route(p,'chat');
- await p.locator('#chat-text').fill('查找期间保留的虚构草稿');
+ const composer=p.locator('#chat-text');
+ const initialHeight=await composer.evaluate(input=>input.offsetHeight);
+ await composer.fill('多行草稿第一行\n第二行\n第三行\n第四行');
+ if(await p.evaluate(()=>CSS.supports('field-sizing','content'))){
+  check(await composer.evaluate((input,start)=>input.offsetHeight>start,initialHeight),platform+' the chat composer grows with multiline drafts');
+  await p.waitForFunction(()=>{
+   const log=document.getElementById('chat-log');
+   return log.scrollHeight-log.scrollTop-log.clientHeight<3;
+  });
+  await composer.fill('查找期间保留的虚构草稿');
+  check(await composer.evaluate((input,start)=>input.offsetHeight===start,initialHeight),platform+' a shorter draft restores the chat reading area');
+ }else await composer.fill('查找期间保留的虚构草稿');
  await p.getByRole('button',{name:'查找聊天记录',exact:true}).click();
  const search=p.getByLabel('搜索本会话');
  check(await search.evaluate(input=>input===document.activeElement),platform+' conversation search focuses its input');
@@ -167,6 +178,8 @@ async function checkChatSearch(p,platform){
  }),platform+' old result opens at the matching record and receives focus');
  check(await p.locator('#chat-log .chat-message').count()<=60,platform+' jumping to a distant message does not mount intervening history');
  check(await p.locator('#chat-text').inputValue()==='查找期间保留的虚构草稿',platform+' searching history preserves the draft');
+ await composer.fill('查看历史时也能编辑草稿\n新增一行\n第四行');
+ check(await p.locator('.chat-message.is-found').count()===1,platform+' editing a draft keeps the located history');
  await p.evaluate(()=>{
   const last=fixture.tasks.find(item=>item.id==='search-169');
   fixture.tasks.push({...last,id:'search-new',created:'2025-02-02 10:00:00',chatText:'新到达的虚构消息'});

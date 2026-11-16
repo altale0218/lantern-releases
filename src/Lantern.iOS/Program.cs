@@ -16,12 +16,15 @@ public sealed class SceneDelegate : UIWindowSceneDelegate
 {
     private LanternTabs? tabs;
 
+    public override UIWindow? Window { get; set; }
+
     public override void WillConnect(UIScene scene, UISceneSession session, UISceneConnectionOptions connectionOptions)
     {
         if (scene is not UIWindowScene windowScene) return;
         tabs = new LanternTabs();
-        Window = new UIWindow(windowScene) { RootViewController = tabs };
-        Window.MakeKeyAndVisible();
+        var window = new UIWindow(windowScene) { RootViewController = tabs };
+        Window = window;
+        window.MakeKeyAndVisible();
     }
 
     public override void DidBecomeActive(UIScene scene) => tabs?.Resume();

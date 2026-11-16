@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.28";
-    public const int AndroidCode=61;
+    public const string Version="0.7.29";
+    public const int AndroidCode=62;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.28\n• 传输进度卡片按状态显示操作。排队时可以取消，实际传输时可暂停，已暂停时可继续。\n• Android 进度统计更紧凑，速度和按钮在空间足够时并排。Windows 宽窗口也能在同一行查看任务与操作。\n• 失败原因单独显示一次，重试入口保留。接收完成后仍可查看保存位置。";
+    public const string Notes="0.7.29\n• 聊天输入框随多行草稿展开，短草稿还原阅读空间，编辑草稿时保持正在查看的历史位置。\n• 长聊天和传输记录复用时间排列，后台状态刷新减少重复排序。新增、删除和重启仍更新历史顺序。\n• 修复 iOS 原生窗口在启动时的崩溃，整理 iPhone 和 iPad 的构建与验证说明。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

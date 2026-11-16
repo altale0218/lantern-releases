@@ -632,6 +632,15 @@
 :root[data-page="chat"] .secondary-topbar{flex-wrap:wrap;column-gap:10px;row-gap:4px}
 :root[data-page="chat"] .secondary-title{flex:1 1 min(8em,60%);min-width:0}
 .chat-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-inline-start:auto;min-width:0;flex-wrap:wrap}
+@supports (field-sizing:content){
+ .chat-composer #chat-text{
+  field-sizing:content;
+  height:auto;
+  min-height:max(44px,calc(22.4px * var(--font-scale,1) + 18px));
+  max-height:max(50px,min(144px,calc(var(--chat-height,480px) * .3)));
+  overflow-y:auto
+ }
+}
 @media(max-width:380px){
  .chat-search-modal{padding:14px}
  .chat-search-hit>svg:last-child{display:none}

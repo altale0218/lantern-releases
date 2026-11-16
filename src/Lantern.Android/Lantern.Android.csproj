@@ -3,8 +3,8 @@
   <ItemGroup><ProjectReference Include="../Lantern.AppLogic/Lantern.AppLogic.csproj" /></ItemGroup>
   <PropertyGroup><RootNamespace>Lantern.AndroidApp</RootNamespace></PropertyGroup>
   <PropertyGroup>
-    <ApplicationVersion>61</ApplicationVersion>
-    <ApplicationDisplayVersion>0.7.28</ApplicationDisplayVersion>
+    <ApplicationVersion>62</ApplicationVersion>
+    <ApplicationDisplayVersion>0.7.29</ApplicationDisplayVersion>
     <!-- Keep runtime data exports generated: disabling compression omits symbols
          required by libmonodroid in Android workload 36.1.69. -->
     <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>

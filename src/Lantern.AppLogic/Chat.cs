@@ -54,7 +54,7 @@ public sealed partial class AppController
             try
             {
                 var saved=JsonSerializer.Deserialize<UiTask[]>(plain,Json)??[];
-                tasks.Clear();foreach(var task in saved)tasks[task.Id]=task;
+                RestoreTasks(saved);
             }
             finally{CryptographicOperations.ZeroMemory(plain);}
         }
@@ -92,7 +92,7 @@ public sealed partial class AppController
         if(!service.Nearby.TryGetValue(peerId,out var target))throw new IOException("设备已离线，请打开对方闪传后重试");
         if(retry is not null&&retry.ConversationKey!=ConversationKey(peer))throw new IOException("设备密钥已变化，请在新会话发送");
         var item=retry??new UiTask{Id=message.Id,Kind="text",ChatText=text,ConversationKey=ConversationKey(peer),PeerId=peerId,Peer=peer.Identity.Name,Name="文字消息",Direction="send",Created=DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"),Total=Encoding.UTF8.GetByteCount(text)};
-        item.State="queued";item.Message=null;tasks[item.Id]=item;sessionTasks[item.Id]=0;
+        item.State="queued";item.Message=null;StoreTask(item);sessionTasks[item.Id]=0;
         try{await SaveHistoryAsync(true);}catch{item.State="failed";item.Message="消息记录保存失败，请检查存储空间后重试";throw;}
         var operation=Task.Run(async()=>
         {
@@ -136,7 +136,7 @@ public sealed partial class AppController
             }
             else
             {
-                tasks[message.Id]=new UiTask{Id=message.Id,Kind="text",ChatText=message.Text,ConversationKey=key,PeerId=connection.Peer.Id,Peer=connection.Peer.Name,Name="文字消息",Direction="receive",State="completed",Created=DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"),Total=Encoding.UTF8.GetByteCount(message.Text),Completed=Encoding.UTF8.GetByteCount(message.Text)};
+                StoreTask(new UiTask{Id=message.Id,Kind="text",ChatText=message.Text,ConversationKey=key,PeerId=connection.Peer.Id,Peer=connection.Peer.Name,Name="文字消息",Direction="receive",State="completed",Created=DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"),Total=Encoding.UTF8.GetByteCount(message.Text),Completed=Encoding.UTF8.GetByteCount(message.Text)});
             }
             await SaveHistoryAsync(true);
             await connection.Channel.SendJsonAsync(new ChatReceipt(message.Id,message.Sha256,true),ct);

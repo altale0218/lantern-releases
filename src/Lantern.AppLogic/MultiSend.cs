@@ -45,7 +45,7 @@ public sealed partial class AppController
             foreach(var (peer,found) in targets)
             {
                 var item=new UiTask{Id=Guid.NewGuid().ToString("N"),BatchId=batchId,PeerId=peer.Identity.Id,Peer=peer.Identity.Name,ConversationKey=ConversationKey(peer),Direction="send",Name=files.Count==1?files[0].Source.Name:$"文件分享 · {files.Count} 个文件",State="queued",Total=files.Sum(f=>f.Source.Size),Created=DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"),Files=files.Select((f,i)=>new UiFile{Id=i.ToString(),Name=f.Source.Name,Mime=f.Source.Mime,Size=f.Source.Size,LocalPath=f.LocalPath,Preview=f.Preview}).ToList()};
-                tasks[item.Id]=item;retrySources[item.Id]=files;sessionTasks[item.Id]=0;created.Add(item.Id);
+                StoreTask(item);retrySources[item.Id]=files;sessionTasks[item.Id]=0;created.Add(item.Id);
                 var operation=Task.Run(()=>SendAsync(item,found,files));outgoing[item.Id]=operation;
                 _=operation.ContinueWith(_=>outgoing.TryRemove(item.Id,out var ignored),TaskScheduler.Default);
             }

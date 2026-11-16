@@ -127,6 +127,7 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
     private readonly CancellationTokenSource life = new();
     private int disposed;
     private readonly object taskGate = new();
+    private UiTask[]? orderedTasks;
     private IReadOnlyList<PickedFile> selection = [];
     private DeviceIdentity me = null!;
     private TrustStore trust = null!;
@@ -162,7 +163,7 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
             try
             {
                 var history = JsonSerializer.Deserialize<List<UiTask>>(await File.ReadAllTextAsync(HistoryPath), Json) ?? [];
-                foreach (var item in history) tasks[item.Id] = item;
+                RestoreTasks(history);
             }
             catch (Exception ex) when (ex is IOException or JsonException) { }
         }
@@ -204,7 +205,7 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
             return new { id, conversationKey = saved is null ? "" : ConversationKey(saved), name = identity.Name, platform = identity.Platform, address = found?.Address, port = found?.Port ?? LanService.DefaultPort,
                 online, status=transferring?"transferring":presence, trusted = saved is not null, pairedAt = saved?.PairedAt.ToLocalTime().ToString("yyyy-MM-dd"), fingerprint = id };
         }).OrderByDescending(d=>d.online).ThenBy(d=>d.name,StringComparer.OrdinalIgnoreCase).ThenBy(d=>d.id).ToArray();
-        UiTask[] snapshot; lock (taskGate) snapshot = tasks.Values.OrderByDescending(t => t.Created).ToArray();
+        UiTask[] snapshot = GetOrderedTasks();
         // Native source paths are persisted locally, never exposed through the page bridge.
         bool thumbnails = settings.Thumbnails;
         var visibleTasks=snapshot.Select(t=>new{t.Id,t.BatchId,t.Kind,t.ChatText,t.ConversationKey,t.PeerId,t.Peer,t.Name,t.Direction,t.State,t.Total,t.Completed,t.Speed,t.Created,t.Message,t.Folder,files=t.Files.Select(f=>new{f.Id,f.Name,f.Mime,f.Size,f.Completed,
@@ -216,6 +217,38 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
             pairingBusy=pairingOperation is {IsCompleted:false},
             pairCode = pairCode is { } p && p.Expires>DateTimeOffset.UtcNow ? new { code = p.Code, expires = p.Expires } : null, notice };
     }
+    // Created is assigned before a task is registered. Progress changes keep the same ordering.
+    private UiTask[] GetOrderedTasks()
+    {
+        lock (taskGate)
+            return orderedTasks ??= tasks.Values.OrderByDescending(t => t.Created, StringComparer.Ordinal).ToArray();
+    }
+
+    private void RestoreTasks(IEnumerable<UiTask> history)
+    {
+        lock (taskGate)
+        {
+            tasks.Clear();
+            foreach (var task in history) tasks[task.Id] = task;
+            orderedTasks = null;
+        }
+    }
+
+    private void StoreTask(UiTask task)
+    {
+        lock (taskGate)
+        {
+            tasks[task.Id] = task;
+            orderedTasks = null;
+        }
+    }
+
+    private void RemoveTask(string id)
+    {
+        lock (taskGate)
+            if (tasks.TryRemove(id, out _)) orderedTasks = null;
+    }
+
     private const int MaxThumbnailCharacters = 512 * 1024;
 
     private object ReadThumbnails(JsonElement items)
@@ -393,7 +426,7 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
                             if(!IsFinished(task.State)||controls.ContainsKey(task.Id))throw new IOException("进行中的任务不能删除记录");
                             if(host.Platform=="Android"&&task.Direction=="receive"&&task.Folder is not null&&!task.Folder.StartsWith("lantern-public:",StringComparison.Ordinal))throw new IOException("请先导出或删除旧版接收文件");
                         }
-                        foreach(var task in selectedTasks){tasks.TryRemove(task.Id,out _);retrySources.TryRemove(task.Id,out _);}
+                        foreach(var task in selectedTasks){RemoveTask(task.Id);retrySources.TryRemove(task.Id,out _);}
                         await SaveHistoryAsync();return new{ok=true,count=selectedTasks.Length,message=$"已删除 {selectedTasks.Length} 条记录，文件保留"};
                     }finally{receivedGate.Release();}
                 }
@@ -404,7 +437,7 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
                         if(!command.TryGetProperty("confirmed",out var confirmation)||!confirmation.GetBoolean())throw new IOException("删除记录需要确认");
                         if(!tasks.TryGetValue(Text("id"),out var task)||!IsFinished(task.State)||controls.ContainsKey(task.Id))throw new IOException("进行中的任务不能删除记录");
                         if(host.Platform=="Android"&&task.Direction=="receive"&&task.Folder is not null&&!task.Folder.StartsWith("lantern-public:",StringComparison.Ordinal))throw new IOException("请先导出或删除旧版接收文件");
-                        tasks.TryRemove(task.Id,out _);retrySources.TryRemove(task.Id,out _);await SaveHistoryAsync();return new{ok=true,message="传输记录已删除，文件保留"};
+                        RemoveTask(task.Id);retrySources.TryRemove(task.Id,out _);await SaveHistoryAsync();return new{ok=true,message="传输记录已删除，文件保留"};
                     }finally{receivedGate.Release();}
                 }
                 case "export-received":
@@ -426,7 +459,7 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
                     }finally{receivedGate.Release();}
                 case "clear-history":
                     if(HasPrivateAndroidFiles())throw new IOException("请先将旧版接收文件保存到手机公开目录或删除，再清空记录");
-                    foreach (var item in tasks.Values.Where(t => IsFinished(t.State))){tasks.TryRemove(item.Id, out var ignored);retrySources.TryRemove(item.Id,out _);}
+                    foreach (var item in tasks.Values.Where(t => IsFinished(t.State))){RemoveTask(item.Id);retrySources.TryRemove(item.Id,out _);}
                     await SaveHistoryAsync(); break;
                 case "open-network-settings": await host.OpenNetworkSettingsAsync(); break;
                 case "setting":
@@ -556,7 +589,7 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
                 if(tasks.ContainsKey(offer.Id))throw new InvalidDataException("任务编号已存在，请新建发送任务");
                 task = new() { Id = offer.Id, PeerId = connection.Peer.Id, Peer = connection.Peer.Name, Direction = "receive", Name = offer.Files.Length == 1 ? offer.Files[0].Name : $"收到文件 · {offer.Files.Length} 个文件", State = "waiting", Total = offer.Total, Created = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") };
                 task.ConversationKey=ConversationKey(authenticatedTrust);
-                SetManifest(task, offer); tasks[task.Id] = task; sessionTasks[task.Id] = 0; controls[task.Id] = (control, cancel);
+                SetManifest(task, offer); StoreTask(task); sessionTasks[task.Id] = 0; controls[task.Id] = (control, cancel);
             },async (staging,token)=>
             {
                 if(task is null)return;
@@ -630,7 +663,7 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
         try
         {
             if (!settings.History||!historyLoaded) return;
-            UiTask[] copy; lock (taskGate) copy = tasks.Values.Where(t => IsFinished(t.State)||t.Kind=="text").OrderByDescending(t => t.Created).ToArray();
+            UiTask[] copy; lock (taskGate) copy = GetOrderedTasks().Where(t => IsFinished(t.State)||t.Kind=="text").ToArray();
             byte[] plain=JsonSerializer.SerializeToUtf8Bytes(copy,Json);
             try { await File.WriteAllBytesAsync(EncryptedHistoryPath + ".tmp",HistoryVault.Seal(plain,historyKey)); }
             finally { CryptographicOperations.ZeroMemory(plain); }
