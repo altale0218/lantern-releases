@@ -1,27 +1,27 @@
 [
   {
-    "tag_name": "v0.7.26",
+    "tag_name": "v0.7.27",
     "draft": false,
     "prerelease": true,
-    "body": "闪传 Lantern 0.7.26 测试版\n\n- 聊天和任务刷新时复用未变化的卡片，长记录在后台状态变化时更流畅。\n- 文档预览阅读区增宽，界面放大后仍能准确跳到所选章节或工作表。\n- 更新检查跳过仅发布源码的条目，保留相同渠道内可安装的版本。\n- Android versionCode 59，Windows 手动确认安装。",
+    "body": "闪传 Lantern 0.7.27 测试版\n\n- 图片和视频缩略图改用短地址。展开图片较多的传输任务时，进度刷新更快。\n- 关闭缩略图时立即释放已缓存的预览，重新打开后只加载进入视野的文件。\n- Android versionCode 60，Windows 手动确认安装。",
     "assets": [
       {
         "name": "Lantern-Android.apk",
         "size": 47074931,
-        "digest": "sha256:2470a8dcd267838122a5f6b2b51fadfcb9666fcc9ff45bd61548877230d16739",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.26/Lantern-Android.apk"
+        "digest": "sha256:0a90665e2f741845841acf08017b595dcfd619b429f8bdda3595fba62888cd29",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.27/Lantern-Android.apk"
       },
       {
         "name": "Lantern-Windows.zip",
-        "size": 3411364,
-        "digest": "sha256:35288f8f1f25303bf5f32b27e4e16a01c5dddaa76e9d0af8c13497b7ad30908b",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.26/Lantern-Windows.zip"
+        "size": 3411635,
+        "digest": "sha256:64ba6f5a45c104cc6966682cf87fd81ab50bf1f03be125d6d794427667a927c6",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.27/Lantern-Windows.zip"
       },
       {
         "name": "SHA256SUMS.txt",
         "size": 172,
-        "digest": "sha256:c1285c144fb26077fd1cda7adfaee22ca0fe2c1078372dbf34d02082355c80d7",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.26/SHA256SUMS.txt"
+        "digest": "sha256:c9622bedef1daacb5ae46ea0cdfac2cc97573e74de9b275b6bcc29533eb81346",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.27/SHA256SUMS.txt"
       }
     ]
   }
