@@ -120,7 +120,7 @@ sealed class Host(string platform,string directory):IPlatformHost
     {
         Validations++;
         if(RejectSignature)throw new CryptographicException("Fixture signature mismatch");
-        if(manifest.VersionCode!=41)throw new InvalidDataException("Fixture version code mismatch");
+        if(manifest.VersionCode!=FakeServers.NextAndroidCode)throw new InvalidDataException("Fixture version code mismatch");
         return Task.CompletedTask;
     }
     public Task InstallUpdateAsync(string file){Installs++;return Task.CompletedTask;}
@@ -139,6 +139,9 @@ sealed class Secrets:ISecretStore
 
 sealed class FakeServers : HttpMessageHandler
 {
+    internal const int NextAndroidCode=AppRelease.AndroidCode+1;
+    private static readonly Version CurrentVersion=Version.Parse(AppRelease.Version);
+    private static readonly Version NextVersion=new(CurrentVersion.Major,CurrentVersion.Minor,CurrentVersion.Build+1);
     private static readonly byte[] Payload=[1,3,3,7];
     private static readonly string Checksum=Convert.ToHexString(SHA256.HashData(Payload)).ToLowerInvariant();
     public bool FailGitHub,FailGitee,BadPayload,ConflictingHashes,LowAndroidCode,ExternalRedirect;
@@ -156,11 +159,11 @@ sealed class FakeServers : HttpMessageHandler
             string releases=github?"https://github.com/altale0218/lantern-releases/releases/download/":"https://gitee.com/altalatic/lantern-releases/releases/download/";
             object Entry(string tag,bool prerelease)=>new
             {
-                tag_name=tag,prerelease,draft=false,body="Fixture versionCode "+(LowAndroidCode?1:41),
+                tag_name=tag,prerelease,draft=false,body="Fixture versionCode "+(LowAndroidCode?1:NextAndroidCode),
                 assets=new[]{"Lantern-Android.apk","Lantern-Windows.zip","SHA256SUMS.txt"}
                     .Select(asset=>new{name=asset,browser_download_url=releases+tag+"/"+asset,size=github?Payload.Length:(int?)null})
             };
-            return Reply(HttpStatusCode.OK,new StringContent(JsonSerializer.Serialize(new[]{Entry("v0.7.6",false),Entry("v0.7.8",true)})));
+            return Reply(HttpStatusCode.OK,new StringContent(JsonSerializer.Serialize(new[]{Entry("v"+CurrentVersion,false),Entry("v"+NextVersion,true)})));
         }
         if(ExternalRedirect)
         {
