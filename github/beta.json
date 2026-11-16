@@ -1,27 +1,27 @@
 [
   {
-    "tag_name": "v0.7.21",
+    "tag_name": "v0.7.22",
     "draft": false,
     "prerelease": true,
-    "body": "Lantern 0.7.21 测试版。\n\n- GitHub 和 Gitee 发行接口限流时，会读取各自官方地址的备用清单，再校验安装包和摘要。\n- 接收文件时，仅为图片与视频生成缩略图。预览生成失败时，已校验文件可以照常保存。\n- 降低大批文件进度更新与历史记录较多时的通知开销。\n- Android 包 versionCode 54，沿用原发布签名。Windows 提供独立压缩包。",
+    "body": "闪传 Lantern 0.7.22 测试版\n\n- 键盘打开确认发送时优先聚焦设备搜索；配对地址已带入时聚焦匹配码。\n- 修复较早的弹窗关闭结果可能误关新打开的发送窗口。\n- 弹窗、设置开关和任务进度提供更明确的屏幕阅读器提示。\n- Android 界面在后台减少状态刷新。Windows 窗口最小化时继续保留原生通知和任务栏进度，恢复后同步当前界面状态。\n- Android versionCode 55，Windows 手动确认安装。",
     "assets": [
       {
         "name": "Lantern-Android.apk",
-        "size": 47070835,
-        "digest": "sha256:27255805c785f3b703200a3a220ca4560624cce80cab6ea86083d8449c40c55a",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.21/Lantern-Android.apk"
+        "size": 47074931,
+        "digest": "sha256:4486819305819fb34b8261e8e2526e84a5d9bca38c7e40cdc9be417f0476d2f1",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.22/Lantern-Android.apk"
       },
       {
         "name": "Lantern-Windows.zip",
-        "size": 3408502,
-        "digest": "sha256:1a814e275d9920c7b4f02ecaf4bfd432c75e078d4b0a8159815a994a9b9f170a",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.21/Lantern-Windows.zip"
+        "size": 3408927,
+        "digest": "sha256:f76b635c9f6c90ea57f97db4e47342406b16886996a85dfb3fb46a3fe88ca720",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.22/Lantern-Windows.zip"
       },
       {
         "name": "SHA256SUMS.txt",
         "size": 172,
-        "digest": "sha256:1db48d91b51d1441f00e00e7f60f8a6a3450637f70ee5dd9331f35f5defc679d",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.21/SHA256SUMS.txt"
+        "digest": "sha256:1a14ab23fb8ca6369a596950783b8bd65a8fb3c8c7c2f76d20fabc36d6c21933",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.22/SHA256SUMS.txt"
       }
     ]
   }
