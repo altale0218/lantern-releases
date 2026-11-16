@@ -137,6 +137,38 @@ async function checkSendConfirmation(p,platform){
  await p.locator('nav button[data-page="transfer"]:visible').click();
  await route(p,'transfer');
 }
+async function checkDiscoveredPairing(p,platform){
+ await p.evaluate(()=>{
+  window.devicesBeforePairingScenario=fixture.devices;
+  fixture.devices=[...fixture.devices,...Array.from({length:6},(_,i)=>({
+   id:'fixture-discovered-'+i,name:'待配对的虚构设备 '+i,platform:'Android',online:true,trusted:false,status:'discovered',address:'192.0.2.'+(50+i),port:54123
+  }))];
+  window.lantern.setState(fixture);
+ });
+ check(await p.locator('#home-devices .release-device-card').count()===2,platform+' remembered cards only include paired devices');
+ check(await p.locator('.nearby-card [data-pair-device]:visible').count()===3,platform+' nearby list starts with three unpaired devices');
+ await p.locator('.nearby-more summary').click();
+ check(await p.locator('.nearby-card [data-pair-device]:visible').count()===6,platform+' all nearby devices remain accessible');
+ await p.evaluate(()=>{fixture.devices=[...fixture.devices];window.lantern.setState(fixture)});
+ check(await p.locator('.nearby-more').evaluate(element=>element.open),platform+' discovery refresh preserves the expanded nearby list');
+ const device=p.locator('[data-pair-device="fixture-discovered-5"]');
+ await device.click();
+ const address=p.locator('#peer-address'),code=p.locator('#peer-code');
+ check(await address.inputValue()==='192.0.2.55'&&await code.evaluate(element=>document.activeElement===element),platform+' pairing uses the selected address and focuses its matching code');
+ await code.fill('1234');await code.press('Enter');
+ check(await p.evaluate(()=>!commands.some(command=>command.type==='pair')),platform+' an incomplete matching code cannot start a pairing request');
+ await code.fill('12345678');await address.fill('192.0.2.999');await code.press('Enter');
+ check(await p.evaluate(()=>!commands.some(command=>command.type==='pair')),platform+' invalid IPv4 input cannot start a pairing request');
+ await address.fill('192.0.2.55');await code.press('Enter');
+ await p.getByRole('heading',{name:'等待双方确认'}).waitFor();
+ check(await p.evaluate(()=>commands.find(command=>command.type==='pair')?.port===54123),platform+' matching code is submitted to the observed service port');
+ await p.locator('#modal [data-action="close-modal"]').first().click();
+ await device.click();await address.fill('192.0.2.90');await code.fill('12345678');await code.press('Enter');
+ await p.getByRole('heading',{name:'等待双方确认'}).waitFor();
+ check(await p.evaluate(()=>!('port' in commands.filter(command=>command.type==='pair').at(-1))),platform+' changing the address clears the discovered device port');
+ await p.locator('#modal [data-action="close-modal"]').first().click();
+ await p.evaluate(()=>{fixture.devices=devicesBeforePairingScenario;window.lantern.setState(fixture)});
+}
 async function checkTouch(p,label){
  const result=await p.evaluate(()=>{
   const nodes=[...document.querySelectorAll('button,button *,a,a *,input,select,textarea,summary,summary *,[role="button"],[role="button"] *,[role="switch"],[role="menuitem"],[role="menuitem"] *,[data-device],[data-device] *')];
@@ -150,6 +182,7 @@ async function checkTouch(p,label){
   await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);const sending=m.command.type==='send';const ok=!sending||!window.failNextSend;if(sending)window.failNextSend=false;const result={ok};if(m.command.type==='preview-selection')result.document={format:'PowerPoint',sections:Array.from({length:3},(_,i)=>({title:'幻灯片 '+(i+1),text:'虚构示例内容\n'.repeat(22)}))};if(m.command.type==='preview-thumbnails')result.thumbnails=m.command.items.map(item=>({...item,source:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII='}));if(m.id)setTimeout(()=>window.lanternNativeResult(m.id,result),sending?300:m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}});
   await p.goto('http://127.0.0.1:'+server.address().port);await p.evaluate(s=>{window.fixture=s;window.lantern.setState(s);window.lantern.setInsets({top:s.self.platform==='Android'?24:0,bottom:s.self.platform==='Android'?24:0})},fixture(platform));
   await checkNavigation(p,platform);
+  await checkDiscoveredPairing(p,platform);
   await checkSendConfirmation(p,platform);
   await checkLazyThumbnails(p,platform);
   check(await p.locator('.release-send-card').count()===1,platform+' compact sending workspace');check(await p.locator('.orbit-art').count()===0,platform+' oversized decorative orbit removed');

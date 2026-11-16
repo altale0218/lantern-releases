@@ -17,7 +17,7 @@
 
 .security-card h4{font-size:calc(16px * var(--font-scale,1));font-weight:600;margin:22px 0 8px;line-height:1.6}
 
-#home-devices>.tasks-heading{flex-wrap:wrap;gap:16px}#home-devices>.tasks-heading>.flex{flex-wrap:wrap}.nearby-card{max-height:480px;overflow:auto}.device-card .pill{white-space:normal;text-align:right}
+#home-devices>.tasks-heading{flex-wrap:wrap;gap:16px}#home-devices>.tasks-heading>.flex{flex-wrap:wrap}.device-card .pill{white-space:normal;text-align:right}
 
 /* Room for readable text and scaled Windows controls. */
 html[data-platform="Windows"] .intro-grid{grid-template-columns:repeat(auto-fit,minmax(min(410px,100%),1fr));gap:24px}

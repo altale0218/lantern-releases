@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.15";
-    public const int AndroidCode=48;
+    public const string Version="0.7.16";
+    public const int AndroidCode=49;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.15\n• 放大常用导航文字、传输状态和隐私链接，保持深浅主题和窄窗口的布局。\n• 更新源短时断连或暂不可用时安全重试一次，保留原有服务器、校验和签名规则。\n• 分段读取更新目录和摘要，减少正常检查时的临时内存分配。";
+    public const string Notes="0.7.16\n• 首页分别显示附近待配对和已配对设备，减少重复显示，保留发送、聊天和测速入口。\n• 从附近列表发起配对会带入地址和发现到的端口。仍需输入 8 位匹配码并在两端确认。\n• 优化多设备列表和窄窗排版，支持查看更多并保持标题可读。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);
