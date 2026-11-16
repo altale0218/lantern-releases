@@ -113,6 +113,9 @@ jobs:
           device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.22.apk"
           startup 55 0.7.22
           echo "PASS same-signature upgrade preserved the application package"
+          download 0.7.23 ff341197105c5d1888f9ec8e51d4a4965d391f15248bd0435fc38b91bf178444
+          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.23.apk"
+          startup 56 0.7.23
           original_pid="$(device shell pidof "$PACKAGE" | tr -d '\r')"
           echo "PID before Home: $original_pid"
           device shell input keyevent KEYCODE_HOME
@@ -129,13 +132,13 @@ jobs:
           echo "PID while backgrounded: $background_pid"
           resumed=false
           for launch_attempt in 1 2 3; do
-            if device shell am start -W -n "$launcher" > "$RUNNER_TEMP/lantern-resume-launch.log" 2>&1; then
+            if device shell am start --user 0 -W -n "$PACKAGE/.StartupActivity" > "$RUNNER_TEMP/lantern-resume-launch.log" 2>&1; then
               cat "$RUNNER_TEMP/lantern-resume-launch.log"
               resumed=true
               break
             fi
             cat "$RUNNER_TEMP/lantern-resume-launch.log"
-            if ! grep -Eqi 'broken pipe|deadobject' "$RUNNER_TEMP/lantern-resume-launch.log"; then break; fi
+            if ! grep -Eqi 'broken pipe|deadobject|Error type 3' "$RUNNER_TEMP/lantern-resume-launch.log"; then break; fi
             sleep 3
           done
           test "$resumed" = true
@@ -151,6 +154,3 @@ jobs:
           fi
           if device logcat -b crash -d | grep -A 24 -F "Process: $PACKAGE"; then exit 1; fi
           echo "PASS Android launcher displayed the native activity after Home; see the recorded PIDs"
-          download 0.7.23 ff341197105c5d1888f9ec8e51d4a4965d391f15248bd0435fc38b91bf178444
-          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.23.apk"
-          startup 56 0.7.23
