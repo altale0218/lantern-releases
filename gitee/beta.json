@@ -1,27 +1,27 @@
 [
   {
-    "tag_name": "v0.7.22",
+    "tag_name": "v0.7.23",
     "draft": false,
     "prerelease": true,
-    "body": "闪传 Lantern 0.7.22 测试版\n\n- 键盘打开确认发送时优先聚焦设备搜索；配对地址已带入时聚焦匹配码。\n- 修复较早的弹窗关闭结果可能误关新打开的发送窗口。\n- 弹窗、设置开关和任务进度提供更明确的屏幕阅读器提示。\n- Android 界面在后台减少状态刷新。Windows 窗口最小化时继续保留原生通知和任务栏进度，恢复后同步当前界面状态。\n- Android versionCode 55，Windows 手动确认安装。",
+    "body": "闪传 Lantern 0.7.23 测试版\n\n- 设置新增分组跳转，窄屏上的开关说明使用整行。\n- 大字号和界面放大时，底部导航保持单行。\n- 按文件大小选择接收写入缓冲，减少一次接收许多小文件时的内存分配。\n- Android versionCode 56，Windows 手动确认安装。",
     "assets": [
       {
         "name": "Lantern-Android.apk",
         "size": 47074931,
-        "digest": "sha256:4486819305819fb34b8261e8e2526e84a5d9bca38c7e40cdc9be417f0476d2f1",
-        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.22/Lantern-Android.apk"
+        "digest": "sha256:ff341197105c5d1888f9ec8e51d4a4965d391f15248bd0435fc38b91bf178444",
+        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.23/Lantern-Android.apk"
       },
       {
         "name": "Lantern-Windows.zip",
-        "size": 3408927,
-        "digest": "sha256:f76b635c9f6c90ea57f97db4e47342406b16886996a85dfb3fb46a3fe88ca720",
-        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.22/Lantern-Windows.zip"
+        "size": 3409455,
+        "digest": "sha256:38e7ede6460a5b45ba798feb9df15d66f7ce4d072ab328fff372c195ed586bd2",
+        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.23/Lantern-Windows.zip"
       },
       {
         "name": "SHA256SUMS.txt",
         "size": 172,
-        "digest": "sha256:1a14ab23fb8ca6369a596950783b8bd65a8fb3c8c7c2f76d20fabc36d6c21933",
-        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.22/SHA256SUMS.txt"
+        "digest": "sha256:8e9c0eab794ba5cef89dcf5e4b993e4eaf6767fa32ad704a98c26a357427f52e",
+        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.23/SHA256SUMS.txt"
       }
     ]
   }
