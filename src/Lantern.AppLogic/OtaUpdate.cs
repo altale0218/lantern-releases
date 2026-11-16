@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.13";
-    public const int AndroidCode=46;
+    public const string Version="0.7.14";
+    public const int AndroidCode=47;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.13\n• 图片与视频缩略图在聊天或进度页进入可视范围时载入，减少大批量图片记录的刷新开销。\n• 文件格式和传输进度先显示，滚动到文件时显示缩略图，点击仍可查看预览。\n• 关闭缩略图会清理界面缓存，重新开启后按可见范围载入。";
+    public const string Notes="0.7.14\n• 修复从测速进入更新中心后需要多次返回或卡在测速页的问题。\n• 在 iPhone 与 iPad 打开更新中心时，保留来源标签页，返回原来的设置或聊天。\n• iOS 项目匹配 Xcode 26.6 与相应 .NET 工作负载，补齐构建和模拟器验证说明。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

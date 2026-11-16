@@ -1,13 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-ios26.0</TargetFramework>
+    <LanternIosSdkVersion Condition="'$(LanternIosSdkVersion)' == ''">26.5</LanternIosSdkVersion>
+    <TargetFramework>net10.0-ios$(LanternIosSdkVersion)</TargetFramework>
     <SupportedOSPlatformVersion>17.0</SupportedOSPlatformVersion>
     <OutputType>Exe</OutputType>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationId>com.lantern.transfer</ApplicationId>
-    <ApplicationDisplayVersion>0.7.13</ApplicationDisplayVersion>
-    <ApplicationVersion>46</ApplicationVersion>
+    <ApplicationDisplayVersion>0.7.14</ApplicationDisplayVersion>
+    <ApplicationVersion>47</ApplicationVersion>
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     <AppIcon>AppIcon</AppIcon>
   </PropertyGroup>

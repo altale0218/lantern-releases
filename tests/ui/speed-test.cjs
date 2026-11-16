@@ -40,5 +40,25 @@ async function setup(p,platform,theme='light',fontScale=100){
  // A delayed bridge reply must not start hidden traffic after Back.
  const p=await browser.newPage({viewport:{width:390,height:844}});await setup(p,'Android');await p.evaluate(()=>holdSpeedReply=true);await p.locator('[data-speed-peer]').first().click();await route(p,'speed-test');await p.locator('.secondary-back').click();await route(p,'transfer');await p.evaluate(()=>releaseSpeedReply());await p.waitForFunction(()=>commands.some(c=>c.type==='speed-test-cancel'));check(true,'late start reply is cancelled after Back');await p.close();
  const failed=await browser.newPage({viewport:{width:320,height:640}});await setup(failed,'Android');await failed.evaluate(()=>speedOk=false);await failed.locator('[data-speed-peer]').first().click();await route(failed,'speed-test');await failed.waitForFunction(()=>document.querySelector('.speed-status').textContent.includes('示例拒绝'));check((await failed.locator('.speed-status').innerText()).includes('测试未完成'),'native rejection is not displayed as success');await failed.close();
- fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({success:true,checks},null,2));console.log('PASS '+checks+' equal header, device speed page, directional readings, cancellation and no-fake-result checks');
+ const nested=await browser.newPage({viewport:{width:390,height:844}});await setup(nested,'Android');
+ await nested.locator('[data-speed-peer]').first().click();await route(nested,'speed-test');
+ await nested.locator('[data-action="open-updates"]').click();await route(nested,'updates');
+ await nested.locator('.secondary-back').click();await route(nested,'speed-test');
+ check(await nested.evaluate(()=>window.lantern.navigateBack()&&document.documentElement.dataset.page==='transfer'),'Back from a speed page resumed by Update Center returns to the home page');
+ await nested.close();
+ const apple=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
+ await apple.addInitScript(()=>{window.LanternNativePlatform='iOS';localStorage.setItem('lantern.guide.v1','done');localStorage.setItem('lantern.welcome.v1','done')});
+ await setup(apple,'iOS');
+ await apple.evaluate(()=>window.lantern.openTab('settings'));await route(apple,'settings');
+ await apple.locator('.settings-group [data-action="open-updates"]').click();await route(apple,'updates');
+ check(await apple.evaluate(()=>commands.filter(c=>c.type==='sync-tab').at(-1).tab==='settings'),'Apple Update Center keeps its originating Settings tab selected');
+ await apple.locator('.secondary-back').click();await route(apple,'settings');
+ await apple.evaluate(()=>window.lantern.openTab('history'));await route(apple,'history');
+ await apple.locator('[data-chat-key="key-a"]').click();await route(apple,'chat');
+ await apple.locator('[data-action="open-updates"]').click();await route(apple,'updates');
+ check(await apple.evaluate(()=>commands.filter(c=>c.type==='sync-tab').at(-1).tab==='history'),'Apple updates opened from a chat preserve its originating tab');
+ await apple.locator('.secondary-back').click();await route(apple,'chat');
+ await apple.locator('.secondary-back').click();await route(apple,'history');
+ await apple.close();
+ fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({success:true,checks},null,2));console.log('PASS '+checks+' speed page, readings, cancellation and secondary navigation checks');
 }finally{await browser.close();server.close()}})().catch(e=>{console.error(e);process.exitCode=1});

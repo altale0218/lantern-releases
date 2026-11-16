@@ -1,0 +1,55 @@
+name: Apple simulator build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-26
+            rid: iossimulator-arm64
+          - os: macos-26-intel
+            rid: iossimulator-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      DOTNET_SDK: 10.0.401
+      SIMULATOR_RID: ${{ matrix.rid }}
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.401'
+      - name: Build the iPhone and iPad simulator app
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          dotnet new globaljson --sdk-version "$DOTNET_SDK" --roll-forward disable --force
+          test "$(dotnet --version)" = "$DOTNET_SDK"
+          xcodebuild -version
+          dotnet workload install ios --version "$DOTNET_SDK"
+          dotnet build "$GITHUB_WORKSPACE/src/Lantern.iOS/Lantern.iOS.csproj" -c Debug -r "$SIMULATOR_RID" -p:EnableCodeSigning=false
+      - name: Check the bundled interface and metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$(find src/Lantern.iOS/bin/Debug -type d -name '*.app' -print -quit)"
+          test -n "$bundle"
+          test -f "$bundle/ui/index.html"
+          test -f "$bundle/PrivacyInfo.xcprivacy"
+          plutil -lint -- "$bundle/Info.plist" "$bundle/PrivacyInfo.xcprivacy"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$bundle/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$bundle/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :NSBonjourServices' "$bundle/Info.plist"

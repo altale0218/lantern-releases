@@ -4,12 +4,14 @@
 
 ## 在 Mac 上构建
 
-安装 .NET 10、匹配该 iOS 工作负载版本的 Xcode 26，并通过 `xcode-select` 选择对应的 Xcode。Apple 芯片 Mac 上可以先构建模拟器版本。
+默认组合是 .NET SDK 10.0.401、对应的 iOS 工作负载和 Xcode 26.6。这个 Xcode 包含 iOS 26.5 SDK。先在仓库根目录确认 `dotnet --version`，并用 `xcode-select` 或 `DEVELOPER_DIR` 选中对应的 Xcode。部署目标为 iOS 和 iPadOS 17 或更新版本。
 
 ```sh
-dotnet workload install ios
-dotnet build src/Lantern.iOS/Lantern.iOS.csproj -c Debug -r iossimulator-arm64
+dotnet workload install ios --version 10.0.401
+dotnet build src/Lantern.iOS/Lantern.iOS.csproj -c Debug -r iossimulator-arm64 -p:EnableCodeSigning=false
 ```
+
+上面的命令适用于 Apple 芯片 Mac。Intel Mac 将运行时目标改为 `iossimulator-x64`。安装过相应早期工作负载、并且使用 Xcode 26.0 的开发者，可以为模拟器或真机构建添加 `-p:LanternIosSdkVersion=26.0`。在切换版本时，先核对 [微软的 Xcode 与 .NET 工作负载对应关系](https://github.com/dotnet/macios/releases/tag/dotnet-10.0.1xx-xcode26.5-10318)。
 
 真机调试使用 `ios-arm64`，由 Mac 上的开发签名和描述文件签名。项目内的 `ApplicationId` 用于源码标识，开发者可在本机通过 `-p:ApplicationId=…` 配置其团队拥有的标识。Apple 端的更新随 App Store 或 TestFlight 分发。
 
