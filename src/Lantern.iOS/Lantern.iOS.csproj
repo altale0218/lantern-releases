@@ -7,8 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationId>com.lantern.transfer</ApplicationId>
-    <ApplicationDisplayVersion>0.7.24</ApplicationDisplayVersion>
-    <ApplicationVersion>57</ApplicationVersion>
+    <ApplicationDisplayVersion>0.7.25</ApplicationDisplayVersion>
+    <ApplicationVersion>58</ApplicationVersion>
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     <AppIcon>AppIcon</AppIcon>
   </PropertyGroup>

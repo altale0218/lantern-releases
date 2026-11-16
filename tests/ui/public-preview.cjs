@@ -88,6 +88,7 @@ async function checkUpdateStages(p,platform){
  check(await download.evaluate(button=>button.getBoundingClientRect().bottom<=innerHeight),platform+' available download action is visible before scrolling');
  check((await p.locator('.update-release-meta').innerText()).includes('Gitee'),platform+' selected source is visible beside the next version');
  check(!await p.locator('.update-release-log').evaluate(details=>details.open),platform+' long notes do not push down the primary action');
+ check((await p.locator('.update-note-preview').innerText()).includes('虚构的更新说明'),platform+' next-version notes show a preview before expansion');
  await p.locator('.update-source-details summary').click();
  await p.evaluate(()=>{fixture.ota.phase='downloading';fixture.ota.completed=512;fixture.ota.speed=512;window.lantern.setState(fixture)});
  check(await p.getByRole('progressbar',{name:'更新下载进度'}).getAttribute('aria-valuenow')==='25',platform+' update progress is readable and has an accessible value');

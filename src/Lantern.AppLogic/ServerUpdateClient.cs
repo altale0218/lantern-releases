@@ -125,8 +125,19 @@ public sealed class ServerUpdateClient : IDisposable
             if(await ReadStaticCatalogAsync(mirror,channel,token) is { } fallback)return fallback;
             throw;
         }
-        if(primary.Complete||primary.Candidate is { } match&&match.Version>installed)return primary;
-        return await ReadStaticCatalogAsync(mirror,channel,token)??primary;
+        if(primary.Candidate is { } match&&match.Version>installed)return primary;
+        try
+        {
+            if(await ReadStaticCatalogAsync(mirror,channel,token) is not { } fallback)return primary;
+            var candidate=primary.Candidate;
+            if(fallback.Candidate is { } newer&&(candidate is null||newer.Version>candidate.Value.Version))
+                candidate=newer;
+            return new(candidate,primary.Complete||fallback.Complete);
+        }
+        catch(Exception ex) when(ex is HttpRequestException or IOException or InvalidDataException or JsonException)
+        {
+            return primary;
+        }
     }
 
     private async Task<CatalogResult?> ReadStaticCatalogAsync(Mirror mirror,string channel,CancellationToken token)

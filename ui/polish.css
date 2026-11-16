@@ -238,6 +238,7 @@
 :is(.update-console,.modal) .update-release-log,.update-console .update-source-details{border:1px solid var(--line);border-radius:10px;padding:0 10px;margin:10px 0}
 .update-console details summary,.modal .update-release-log summary{cursor:pointer;min-height:40px;padding:8px 0;line-height:1.55;font-size:calc(13px * var(--font-scale,1))}
 .update-release-log .release-notes{margin:0 0 10px}
+.update-note-preview{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:8px 0 2px;color:var(--text);font-size:calc(14px * var(--font-scale,1));line-height:1.55;overflow-wrap:anywhere}
 .update-source-details ul{margin:0 0 8px;padding:0;list-style:none}
 .update-source-details li{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:5px 0;color:var(--muted);font-size:calc(13px * var(--font-scale,1))}
 .update-source-details li b{color:var(--text)}

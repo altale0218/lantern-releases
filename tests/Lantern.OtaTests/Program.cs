@@ -150,6 +150,20 @@ await using(var paged=new AppController(pagedHost,new ServerUpdateClient(pagedFe
     pagedFeed.StaticCatalogRedirect=false;
     Assert(Ok(await Cmd(paged,new{type="ota-options",channel="stable",source="github"})),"Select independently published stable catalog");
     Assert(Ok(await Cmd(paged,check))&&(await Update(paged)).GetProperty("phase").GetString()=="idle","An empty stable catalog never exposes a beta release");
+    Assert(Ok(await Cmd(paged,new{type="ota-options",channel="beta",source="github"})),"Choose beta for the stale listing case");
+    pagedFeed.BlockReleaseApi=false;
+    pagedFeed.StaleReleaseApi=true;
+    pagedFeed.Requests.Clear();
+    var staleCheck=await Cmd(paged,check);
+    var afterStale=await Update(paged);
+    Assert(Ok(staleCheck)&&afterStale.GetProperty("phase").GetString()=="available"&&
+        Version.Parse(afterStale.GetProperty("release").GetProperty("version").GetString()!)>Version.Parse(AppRelease.Version),
+        "A successful but stale release API cannot hide the newer static beta");
+    Assert(pagedFeed.Requests.Any(uri=>uri.Contains("/lantern-update-catalog/github/beta.json",StringComparison.Ordinal)),
+        "Cross-check the selected channel at the fixed official endpoint");
+    pagedFeed.PublishStaticCatalog=false;
+    Assert(Ok(await Cmd(paged,check))&&(await Update(paged)).GetProperty("phase").GetString()=="current",
+        "A missing static catalog leaves a complete and current primary listing usable");
 }
 var reducer=new TaskbarProgressReducer();TransferNotificationSnapshot Snapshot(params TransferNotificationTask[] t)=>new(false,false,false,t);
 var active=new TransferNotificationTask("one","transferring","send",100,25,0);var second=active with{Id="two",Total=300,Completed=75};
@@ -201,7 +215,7 @@ sealed class FakeServers : HttpMessageHandler
     private static readonly byte[] Payload=[1,3,3,7];
     private static readonly string Checksum=Convert.ToHexString(SHA256.HashData(Payload)).ToLowerInvariant();
     public bool FailGitHub,FailGitee,BadPayload,ConflictingHashes,LowAndroidCode,ExternalRedirect,OversizedCatalog;
-    public bool BlockReleaseApi,PublishStaticCatalog,StaticCatalogRedirect;
+    public bool BlockReleaseApi,PublishStaticCatalog,StaticCatalogRedirect,StaleReleaseApi;
     public int GitHubServiceFailures,GitHubTransportFailures,LeadingBetaPages;
     public System.Collections.Concurrent.ConcurrentQueue<string> Requests {get;}=new();
 
@@ -234,6 +248,7 @@ sealed class FakeServers : HttpMessageHandler
         if(route.EndsWith("/releases",StringComparison.Ordinal))
         {
             if(BlockReleaseApi)return Reply(HttpStatusCode.Forbidden);
+            if(StaleReleaseApi)return Reply(HttpStatusCode.OK,new StringContent(JsonSerializer.Serialize(new[]{Entry("v"+CurrentVersion,true)})));
             if(OversizedCatalog)
             {
                 var invalid=new ByteArrayContent(new byte[2*1024*1024+1]);
