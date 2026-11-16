@@ -82,8 +82,7 @@ jobs:
             version=$2
             rm -f "$RUNNER_TEMP/lantern-pid.log" "$RUNNER_TEMP/lantern-activity.log"
             device shell dumpsys package "$PACKAGE" | grep -F "versionCode=$code " > "$RUNNER_TEMP/lantern-version.log"
-            launcher="$(device shell cmd package query-activities --components --user 0 -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$PACKAGE" | tr -d '\r' | grep -F "$PACKAGE/" | tail -n 1)"
-            test -n "$launcher"
+            launcher="$PACKAGE/.StartupActivity"
             echo "Selected launcher component: $launcher"
             device shell am force-stop --user 0 "$PACKAGE"
             device logcat -b crash -c
@@ -201,6 +200,10 @@ jobs:
               time.sleep(2)
           else:
               raise RuntimeError("The system did not install the confirmed APK")
+          wait_for(lambda n: n.get("package", "").endswith("packageinstaller") and
+              any(s.lower() == "done" for s in labels(n)),
+              "The Android installation success dialog did not offer Done", 60, tap=True)
+          print("PASS Android system installer reported success and dismissed its confirmation screen")
           PY
             startup 61 0.7.28
           fi
