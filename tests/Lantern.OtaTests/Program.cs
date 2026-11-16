@@ -141,7 +141,7 @@ await using(var paged=new AppController(pagedHost,new ServerUpdateClient(pagedFe
     pagedFeed.PublishStaticCatalog=true;
     pagedFeed.Requests.Clear();
     Assert(Ok(await Cmd(paged,check))&&(await Update(paged)).GetProperty("phase").GetString()=="available","Gitee reads the published catalog when the API is rate limited");
-    Assert(pagedFeed.Requests.Any(uri=>uri.EndsWith("/lantern-update-catalog/gitee/beta.json",StringComparison.Ordinal)),"Fallback uses the fixed Gitee channel path");
+    Assert(pagedFeed.Requests.Contains("https://raw.giteeusercontent.com/altalatic/lantern-releases/raw/lantern-update-catalog/gitee/beta.json"),"Fallback uses the fixed Gitee CDN and channel path without a redirect");
     Assert(Ok(await Cmd(paged,new{type="ota-options",channel="beta",source="github"})),"Select GitHub fallback");
     Assert(Ok(await Cmd(paged,check))&&(await Update(paged)).GetProperty("release").GetProperty("source").GetString()=="github","GitHub fallback retains the chosen source and checks the package checksum");
     pagedFeed.StaticCatalogRedirect=true;

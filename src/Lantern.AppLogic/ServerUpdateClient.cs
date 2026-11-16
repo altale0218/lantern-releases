@@ -47,7 +47,7 @@ public sealed class ServerUpdateClient : IDisposable
             new("https://raw.githubusercontent.com/altale0218/lantern-releases/lantern-update-catalog/github/"),
             "https://github.com/altale0218/lantern-releases/releases/download/",["api.github.com","github.com","release-assets.githubusercontent.com","objects.githubusercontent.com"]),
         new("gitee",new("https://gitee.com/api/v5/repos/altalatic/lantern-releases/releases"),
-            new("https://gitee.com/altalatic/lantern-releases/raw/lantern-update-catalog/gitee/"),
+            new("https://raw.giteeusercontent.com/altalatic/lantern-releases/raw/lantern-update-catalog/gitee/"),
             "https://gitee.com/altalatic/lantern-releases/releases/download/",["gitee.com","foruda.gitee.com"])
     ];
     private static readonly JsonSerializerOptions Json=new(JsonSerializerDefaults.Web){MaxDepth=20};
