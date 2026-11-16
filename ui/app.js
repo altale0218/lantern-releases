@@ -97,12 +97,13 @@ function render(){
  }
 }
 function renderFrame(){if(fileMenu&&state.self.platform!=='Windows')closeFileMenu();if(fileMenu){const task=state.tasks.find(t=>t.id===fileMenu.dataset.task),f=task?.files.find(f=>f.id===fileMenu.dataset.file);if(!task||!f||f.deleted||fileUsable(f,task)!==(fileMenu.dataset.usable==='true'))closeFileMenu();}
+ updateThumbnailPreference();
  const root=document.documentElement,secondary=page==='chat'||page==='updates'||page==='speed-test';if(root.dataset.page!==page)root.dataset.page=page;if(root.dataset.platform!==state.self.platform)root.dataset.platform=state.self.platform;if(root.dataset.secondary!==String(secondary))root.dataset.secondary=String(secondary);if(page!=='chat'){root.classList.remove('chat-short','chat-compact');if(root.dataset.chatOpen!=='false')root.dataset.chatOpen='false';}
  window.LanternTheme.apply(state.settings.theme,state.systemTheme);const sizingChanged=applySizing();
  const current=page==='chat'?currentConversation():null,title=({transfer:'传输中心',progress:'传输进度',history:'设备聊天',settings:'设置',chat:current?.name||'聊天',updates:'更新中心','speed-test':'连接测速'})[page]||'传输中心';
  const updateButton=page!=='updates'?'<button class="icon-btn update-entry" data-action="open-updates" aria-label="更新中心" title="检查更新与更新日志">'+icon('download')+(state.ota?.phase==='available'||state.ota?.phase==='ready'?'<i class="update-dot"></i>':'')+'</button>':'';
  const peerAvatar=page==='chat'&&current?.device?'<span class="conversation-avatar '+(current.device.online?'is-online':'')+'" aria-hidden="true">'+icon(deviceIcon(current.device.platform))+'</span>':'';
- const header=secondary?'<button class="icon-btn secondary-back" data-action="secondary-back" aria-label="返回">'+icon('arrow')+'</button>'+peerAvatar+'<div class="grow secondary-title"><h1 tabindex="-1">'+esc(title)+'</h1><small>'+esc(page==='chat'?(current?.device?.online?'在线 · 端到端加密':'设备离线 · 可以查看历史记录'):page==='speed-test'?'局域网 · 双向测速':'Lantern '+(state.version||'0.7.12'))+'</small></div>'+(page==='chat'?'<button class="icon-btn" data-action="refresh-devices" aria-label="刷新设备状态">'+icon('refresh')+'</button><button class="icon-btn" data-action="chat-record-menu" aria-label="聊天记录管理" aria-pressed="'+recordMode+'" title="'+(recordMode?'退出记录多选':'管理聊天记录')+'">'+icon('log')+'</button>':'')+updateButton:'<h1 class="android-title" tabindex="-1">'+title+'</h1><div class="breadcrumb">闪传 Lantern <span>/ &nbsp; '+title+'</span></div><div class="topbar-actions">'+networkBadge()+(applePlatform(state.self.platform)&&page==='transfer'?'<button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button>':'')+updateButton+'</div>';
+ const header=secondary?'<button class="icon-btn secondary-back" data-action="secondary-back" aria-label="返回">'+icon('arrow')+'</button>'+peerAvatar+'<div class="grow secondary-title"><h1 tabindex="-1">'+esc(title)+'</h1><small>'+esc(page==='chat'?(current?.device?.online?'在线 · 端到端加密':'设备离线 · 可以查看历史记录'):page==='speed-test'?'局域网 · 双向测速':'Lantern '+(state.version||'0.7.13'))+'</small></div>'+(page==='chat'?'<button class="icon-btn" data-action="refresh-devices" aria-label="刷新设备状态">'+icon('refresh')+'</button><button class="icon-btn" data-action="chat-record-menu" aria-label="聊天记录管理" aria-pressed="'+recordMode+'" title="'+(recordMode?'退出记录多选':'管理聊天记录')+'">'+icon('log')+'</button>':'')+updateButton:'<h1 class="android-title" tabindex="-1">'+title+'</h1><div class="breadcrumb">闪传 Lantern <span>/ &nbsp; '+title+'</span></div><div class="topbar-actions">'+networkBadge()+(applePlatform(state.self.platform)&&page==='transfer'?'<button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button>':'')+updateButton+'</div>';
  const activeTransfers=secondary?0:state.tasks.reduce((count,task)=>count+(isActiveFileTask(task)?1:0),0);
  const sidebar=secondary?'':'<aside class="sidebar"><div class="brand"><div class="brand-icon">'+icon('bolt')+'</div><span>闪传<small>LANTERN</small></span></div><div class="nav-label">设备与传输</div><nav aria-label="主导航">'+navigationButtons(activeTransfers,false)+'</nav><div class="sidebar-foot">'+(state.settings.showSidebarSecurityHint?'<div class="secure-note">'+icon('shield','shield')+'<h3>只在你的设备之间</h3><p>密码认证配对 · 端到端加密<br>无需服务器，文件留在局域网。</p><button class="link" data-page="settings">查看安全设置 '+icon('arrow')+'</button></div>':'')+'<div class="self-device"><div class="self-avatar">'+icon(deviceIcon(state.self.platform))+'</div><div class="grow"><b>'+esc(state.self.name)+'</b><small>本机 · '+esc(state.self.platform)+'</small></div><button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button></div></div></aside>';
  const content=page==='transfer'?transferPage():page==='progress'?progressPage():page==='history'?historyPage():page==='chat'?chatPage(current):page==='updates'?updatesPage():page==='speed-test'?speedTestPage():settingsPage();
@@ -111,7 +112,7 @@ function renderFrame(){if(fileMenu&&state.self.platform!=='Windows')closeFileMen
   const input=document.getElementById('chat-text'),draft=chatDrafts.get(chatKey)||'';
   if(input&&input!==document.activeElement&&input.value!==draft)input.value=draft;
  }
- if(changed)scrollChat();
+ if(changed){scrollChat();watchThumbnailTiles();}
  if(changed||sizingChanged)queueChatResize();
 }
 
@@ -181,7 +182,7 @@ function deviceRow(d,multiple=false){const checked=multiple&&sendTargets.has(d.i
 function taskList(tasks){return tasks.length?tasks.map(taskCard).join(''):'<div class="empty release-empty"><span class="empty-emblem">'+icon('folder')+'</span><h2>'+esc(filter==='send'?'还没有发送任务':filter==='receive'?'还没有接收任务':'还没有传输任务')+'</h2><p>传输进度、速度与文件详情会显示在这里。</p>'+(filter!=='all'?'<button class="btn secondary" data-filter="all">查看全部任务</button>':'<button class="btn primary" data-page="transfer">去分享文件</button>')+'</div>'}
 function taskCard(t){const complete=t.state==='completed',paused=t.state==='paused',failed=['failed','cancelled','rejected'].includes(t.state),pct=t.total?progressRatio(t.completed/t.total*100)*100:complete?100:0;const label={transferring:'加密传输中',paused:'已暂停',completed:'已完成',failed:'传输失败',cancelled:'已取消',connecting:'建立安全连接',waiting:'等待对方接收',saving:'正在保存文件',queued:'排队等待发送',rejected:'已拒绝'}[t.state]||'等待中';const eta=t.speed>0?Math.ceil((t.total-t.completed)/t.speed):0;return`<article class="task-card" data-render-key="task-${esc(t.id)}">${recordMode&&recordEligible(t)?`<button class="record-checkbox ${recordSelection.has(t.id)?'selected':''}" data-select-record="${esc(t.id)}" role="checkbox" aria-checked="${recordSelection.has(t.id)}" aria-label="选择记录 ${esc(t.name)}">${icon(recordSelection.has(t.id)?'check':'plus')}</button>`:''}<div class="task-summary"><div class="file-stack"><div class="stack-back"></div><div class="stack-front ${t.direction==='send'?'purple':''}">${icon(t.direction==='send'?'upload':'download')}</div></div><div class="grow task-identity"><div class="task-title"><h3>${esc(t.name)}</h3><span class="tag ${complete?'complete':''}">${label}</span></div><div class="task-meta"><span class="task-peer">${icon(t.direction==='send'?'upload':'download')}${t.direction==='send'?'发送至':'接收自'} ${esc(t.peer)}</span><span>${t.files.length} 个文件</span><span title="${esc(t.created||'')}">${esc(messageTime(t.created)||'刚刚')}</span></div></div><div class="task-rate ${complete?'complete':''}"><b>${complete?'传输完成':failed?'任务已结束':paused?'已暂停':t.speed>0?bytes(t.speed)+'/s':'—'}</b><small>${complete?'SHA-256 已校验':failed?esc(t.message||''):eta?'预计剩余 '+(eta<60?eta+' 秒':Math.ceil(eta/60)+' 分钟'):paused?'点击继续传输':'等待设备响应'}</small></div><div class="task-actions">${t.state==='failed'&&t.direction==='send'?`<button class="btn secondary" data-retry="${esc(t.id)}">${icon('refresh')}重试发送</button>`:''}${!complete&&!failed&&t.state!=='saving'?`<button class="icon-btn" data-pause="${esc(t.id)}" aria-label="${paused?'继续':'暂停'}任务">${icon(paused?'play':'pause')}</button><button class="icon-btn cancel-task" data-cancel="${esc(t.id)}" aria-label="取消任务">${icon('close')}</button>`:(complete||failed)&&t.direction==='receive'&&t.folder?`<button class="icon-btn" data-open="${esc(t.id)}" aria-label="打开接收文件夹">${icon('folder')}</button>${state.self.platform==='Android'&&!t.folder.startsWith('lantern-public:')?`<button class="icon-btn" data-export="${esc(t.id)}" aria-label="保存到手机公开目录">${icon('download')}</button>`:''}<button class="icon-btn" data-delete="${esc(t.id)}" aria-label="删除接收文件">${icon('trash')}</button>`:''}${(complete||failed)?`<button class="btn secondary task-record-button" data-delete-record="${esc(t.id)}" aria-label="删除此条传输记录" title="删除记录（保留文件）">${icon('log')}删除记录</button>`:''}<button class="icon-btn" data-expand="${esc(t.id)}" aria-label="${expanded.has(t.id)?'合并':'展开'}任务" aria-expanded="${expanded.has(t.id)}">${icon('chevron','expand-chevron')}</button></div></div><div class="task-progress"><div class="progress-track" role="progressbar" aria-label="任务传输进度" aria-valuenow="${Math.round(pct)}"><div class="progress-fill ${complete?'complete':''}" style="--progress:${progressRatio(pct)}"></div></div><div class="progress-caption"><span>${bytes(t.completed)} / ${bytes(t.total)}${t.message?' · '+esc(t.message):''}</span><strong>${pct.toFixed(0)}%</strong></div></div>${expanded.has(t.id)?`<div class="task-details" data-reveal><div class="detail-caption"><span>本次任务 · ${t.files.length} 个文件</span><span>${icon('lock')} 内容与文件名均加密</span></div><div class="file-grid">${visibleFiles(t).map(f=>fileTile(f,t)).join('')}</div>${moreFilesButton(t)}</div>`:''}</article>`}
 function formatIcon(ext,kind){const color=ext==='PDF'?'#b94e68':ext==='ZIP'||ext==='7Z'||ext==='RAR'?'#906215':kind==='image'?'#287664':kind==='video'?'#7854af':'#386bb1';return `<svg class="format-document" viewBox="0 0 48 56" aria-hidden="true"><path d="M10 3h20l10 11v36a3 3 0 0 1-3 3H10a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z" style="fill:${color};stroke:#ffffff;stroke-width:2"/><path d="M29 3v12h11M15 27h18M15 34h18M15 41h11" style="fill:none;stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/></svg>`}
-function fileTile(f,t){const ext=(f.name.includes('.')?f.name.split('.').pop():'文件').toUpperCase()||'文件',pct=f.size?Math.min(100,f.completed/f.size*100):t.state==='completed'?100:0,kind=f.mime?.startsWith('video/')?'video':f.mime?.startsWith('image/')?'image':'file';if(kind==='file')return documentFile(f,t);let preview=state.settings.thumbnails&&f.preview;if(preview&&!/^(blob:|data:image\/(png|jpeg|webp);base64,|mountain.svg$|coast.svg$)/.test(preview))preview=null;const usable=state.self.platform==='Windows'&&['completed','failed','cancelled','rejected'].includes(t.state)&&!f.deleted&&(f.canOpen??(t.direction==='receive'&&!!t.folder));return`<article data-render-key="file-${esc(t.id)}-${esc(f.id)}" class="file-tile" data-context-file="${esc(f.id)}" data-context-task="${esc(t.id)}"><button class="file-preview-button" data-preview="${esc(f.id)}" data-task="${esc(t.id)}" aria-label="预览 ${esc(f.name)}"><div class="file-visual ${ext==='PDF'?'pdf':''}">${preview?`<img src="${esc(preview)}" alt="${esc(f.name)} 的预览" loading="lazy">`:f.videoUrl&&state.settings.thumbnails?`<video src="${esc(f.videoUrl)}" preload="metadata" muted></video>`:`<div class="big-format">${formatIcon(ext,kind)}<span>${esc(ext.slice(0,10))}</span></div>`}<span class="file-tag">${esc(ext.slice(0,8))}</span>${kind==='video'?`<span class="play-overlay">${icon('play')}</span>`:''}</div><div class="file-tile-info"><b title="${esc(f.name)}">${esc(f.name)}</b><small><span>${bytes(f.size)}</span>${pct===100?icon('check'):pct>0?'<span>'+pct.toFixed(0)+'%</span>':'<span>等待传输</span>'}</small><div class="progress-track"><div class="progress-fill" style="--progress:${progressRatio(pct)}"></div></div></div></button>${f.deleted?'<div class="file-deleted">本机文件已删除</div>':''}${usable?`<div class="file-actions"><button data-copy-file="${esc(f.id)}" data-task="${esc(t.id)}" title="复制文件，可粘贴到文件夹">${icon('copy')}复制文件</button><button data-open-file="${esc(f.id)}" data-task="${esc(t.id)}">${icon('file')}打开文件</button><button data-reveal-file="${esc(f.id)}" data-task="${esc(t.id)}">${icon('folder')}所在目录</button>${t.direction==='receive'?`<button class="delete-file-button" data-delete-file="${esc(f.id)}" data-task="${esc(t.id)}">${icon('trash')}删除文件</button>`:''}</div>`:''}</article>`}
+function fileTile(f,t){const ext=(f.name.includes('.')?f.name.split('.').pop():'文件').toUpperCase()||'文件',pct=f.size?Math.min(100,f.completed/f.size*100):t.state==='completed'?100:0,kind=f.mime?.startsWith('video/')?'video':f.mime?.startsWith('image/')?'image':'file';if(kind==='file')return documentFile(f,t);const preview=thumbnailSource(f,t);const lazy=canFetchThumbnail(f)&&!preview;const usable=state.self.platform==='Windows'&&['completed','failed','cancelled','rejected'].includes(t.state)&&!f.deleted&&(f.canOpen??(t.direction==='receive'&&!!t.folder));return`<article data-render-key="file-${esc(t.id)}-${esc(f.id)}" class="file-tile"${lazy?' data-lazy-thumbnail':''} data-context-file="${esc(f.id)}" data-context-task="${esc(t.id)}"><button class="file-preview-button" data-preview="${esc(f.id)}" data-task="${esc(t.id)}" aria-label="预览 ${esc(f.name)}"><div class="file-visual ${ext==='PDF'?'pdf':''}">${preview?`<img src="${esc(preview)}" alt="${esc(f.name)} 的预览" loading="lazy">`:f.videoUrl&&state.settings.thumbnails?`<video src="${esc(f.videoUrl)}" preload="metadata" muted></video>`:`<div class="big-format">${formatIcon(ext,kind)}<span>${esc(ext.slice(0,10))}</span></div>`}<span class="file-tag">${esc(ext.slice(0,8))}</span>${kind==='video'?`<span class="play-overlay">${icon('play')}</span>`:''}</div><div class="file-tile-info"><b title="${esc(f.name)}">${esc(f.name)}</b><small><span>${bytes(f.size)}</span>${pct===100?icon('check'):pct>0?'<span>'+pct.toFixed(0)+'%</span>':'<span>等待传输</span>'}</small><div class="progress-track"><div class="progress-fill" style="--progress:${progressRatio(pct)}"></div></div></div></button>${f.deleted?'<div class="file-deleted">本机文件已删除</div>':''}${usable?`<div class="file-actions"><button data-copy-file="${esc(f.id)}" data-task="${esc(t.id)}" title="复制文件，可粘贴到文件夹">${icon('copy')}复制文件</button><button data-open-file="${esc(f.id)}" data-task="${esc(t.id)}">${icon('file')}打开文件</button><button data-reveal-file="${esc(f.id)}" data-task="${esc(t.id)}">${icon('folder')}所在目录</button>${t.direction==='receive'?`<button class="delete-file-button" data-delete-file="${esc(f.id)}" data-task="${esc(t.id)}">${icon('trash')}删除文件</button>`:''}</div>`:''}</article>`}
 function footer(){return '<footer class="footer-status"><span class="footer-security">'+icon('lock')+'<span>局域网直连 · 内容加密</span></span><span class="footer-detail">'+(state.mode==='preview'?'<span>虚构数据 · 界面演示</span>':'')+'<button class="footer-link" data-page="settings">隐私与安全</button></span></footer>'}
 function devicesPage(){
  return '<section id="home-devices"><div class="tasks-heading"><div><h2>我的设备 <span>'+state.devices.length+'</span></h2><p class="section-caption">管理配对，查看连接状态。</p></div><div class="flex gap">'+refreshButton()+'</div></div><div class="device-list">'+(state.devices.length?state.devices.map(d=>'<article class="device-card release-device-card" data-render-key="device-'+esc(d.id)+'"><div class="device-card-top"><span class="device-avatar '+(d.platform==='Android'?'android':'')+'">'+icon(deviceIcon(d.platform))+'</span><div class="grow"><h3>'+esc(d.name)+'</h3><p>'+esc(d.platform)+' · '+esc(d.trusted?'已配对':'等待配对')+'</p></div><button class="icon-btn" data-device-info="'+esc(d.id)+'" aria-label="查看 '+esc(d.name)+' 的设备信息" title="设备信息">'+icon('info')+'</button></div><div class="device-connection-state"><i class="presence-dot '+(d.online?'online':'')+'"></i><span>'+esc(d.status==='transferring'?'正在传输':d.online?d.status==='online'?'在线 · 连接已认证':'已发现 · 连接时验证':d.trusted?'离线 · 保留配对与聊天记录':'当前离线')+'</span></div><div class="device-card-actions"><button class="btn '+(d.trusted?'primary':'secondary')+'" '+(!d.online&&!d.trusted?'disabled':'')+' data-'+(d.trusted&&!d.online?'reconnect-peer':'target-pick')+'="'+esc(d.id)+'">'+icon(d.trusted&&!d.online?'refresh':d.trusted?'upload':'lock')+esc(d.trusted&&!d.online?'连接设备':d.trusted?'发送文件':'配对此设备')+'</button>'+(d.trusted?'<button class="btn secondary" data-chat-start="'+esc(d.id)+'">'+icon('history')+'聊天</button><button class="icon-btn device-remove" data-forget="'+esc(d.id)+'" aria-label="移除 '+esc(d.name)+' 的信任" title="移除配对">'+icon('trash')+'</button>':'')+'</div><div class="device-test-action"><button class="btn secondary device-speed-button" data-speed-peer="'+esc(d.id)+'" '+(!d.trusted||!d.online?'disabled':'')+' title="'+(!d.trusted?'请先配对设备':!d.online?'设备离线':'自动测试双向连接速度')+'">'+icon('speed')+'<span>连接测速</span>'+icon('arrow')+'</button></div></article>').join(''):'<div class="empty release-empty"><span class="empty-emblem">'+icon('devices')+'</span><h2>还没有设备</h2><p>在另一台设备打开闪传，点击右上方的配对按钮。</p><button class="btn secondary" data-action="connection-help">查看连接步骤</button></div>')+'</div></section>';
@@ -372,7 +373,7 @@ function sizingSettings(){return [['uiScale','界面缩放','调整整体控件�
 function updatesPage(){
  return '<div class="update-layout">'+updateSettings()+
   '<section class="settings-group current-release"><h2>'+icon('log')+'当前版本更新日志</h2><b class="update-version">Lantern '+
-  esc(state.version||'0.7.12')+'</b><pre class="release-notes">'+esc(state.releaseNotes?.notes||'')+'</pre></section></div>';
+  esc(state.version||'0.7.13')+'</b><pre class="release-notes">'+esc(state.releaseNotes?.notes||'')+'</pre></section></div>';
 }
 const updateServers={auto:'自动选择',github:'GitHub',gitee:'Gitee'};
 const updateChannels={stable:'稳定版',beta:'测试版'};
@@ -421,8 +422,8 @@ function settingsPage(){const windows=state.self.platform==='Windows',apple=appl
 <section class="settings-group" data-render-key="settings-appearance"><h2>${icon('eye')} 外观</h2><div class="setting"><div class="grow"><b>颜色主题</b><small>同步应用与系统栏配色。</small></div><select data-setting="theme" aria-label="颜色主题">${[['system','跟随系统'],['dark','深色模式'],['light','浅色模式']].map(([v,l])=>'<option value="'+v+'" '+((state.settings.theme||'system')===v?'selected':'')+'>'+l+'</option>').join('')}</select></div>${sizingSettings()}</section>
 <section class="settings-group" data-render-key="settings-files"><h2>${icon('log')} 文件与记录</h2>${settingToggle('thumbnails','图片和视频缩略图','在本机生成预览；接收文件完成校验后才生成。')}${settingToggle('history','保存聊天与传输记录','文字、记录与缩略图加密保存在本机；关闭后仅保留当前会话。')}${windows?settingToggle('allowFileDrop','拖拽文件发送','拖入窗口任意位置，再选择一个或多个发送对象。'):''}<details class="advanced-settings" data-motion-disclosure><summary>高级传输选项</summary><div class="setting"><div class="grow"><b>发送速度上限</b><small>为其他应用预留带宽。</small></div><select data-setting="limitMiB" aria-label="发送速度上限">${[[0,'不限速'],[10,'10 MB/s'],[30,'30 MB/s'],[60,'60 MB/s']].map(([v,l])=>'<option value="'+v+'" '+(Number(state.settings.limitMiB)===v?'selected':'')+'>'+l+'</option>').join('')}</select></div></details></section>
 ${apple?'':`<section class="settings-group" data-render-key="settings-notifications"><h2>${icon('bell')} 通知</h2>${windows?settingToggle('windowsNotifications','系统传输通知','显示传输开始、完成与失败；点击通知返回应用。')+settingToggle('windowsTaskbarProgress','任务栏传输进度','在任务栏图标显示任务合并进度。'):settingToggle('transferNotifications','通知栏传输状态','合并显示进度、速度与结果；传输期间请保持应用运行。')}${settingToggle('notificationDetails','在通知中显示文件名','默认关闭，保护通知区域的内容隐私。')}${windows?'':'<div class="setting"><div class="grow"><b>系统通知权限</b><small>'+(status.enabled?'已允许系统通知，可在系统设置管理。':'需要系统授权才能显示通知栏传输状态。')+'</small></div><button class="btn secondary" data-action="'+(status.enabled?'notification-settings':'notification-permission')+'">'+(status.enabled?'系统设置':'允许通知')+'</button></div>'}</section>`}
-<section class="settings-group" data-render-key="settings-updates"><h2>${icon('download')} 软件更新</h2><div class="setting"><div class="grow"><b>更新中心</b><small>${state.ota?.phase==='ready'?'安装包已就绪':state.ota?.phase==='available'?'发现可用更新':['downloading','verifying'].includes(state.ota?.phase)?'正在下载和校验更新':('当前版本 '+esc(state.version||'0.7.12'))}</small></div><button class="btn secondary" data-action="open-updates">打开更新中心</button></div></section>
-<section class="settings-group brand-about" data-render-key="settings-about"><div class="about-brand">${icon('bolt')}<div class="grow"><h2>闪传 Lantern <span class="version-pill">${esc(state.version||'0.7.12')}</span></h2></div><div class="about-actions"><button class="btn ghost" data-action="open-guide">使用引导</button><button class="btn ghost" data-action="privacy-info">隐私说明</button></div></div><div class="about-security"><p><b>设备之间直接分享</b><br>文字与文件在局域网内加密传输，无云端中转。设备昵称与发现广播不是身份凭证。</p><p><b>每次连接都验证身份</b><br>记住设备密钥；连接通过认证后才能接收。传输加密并校验完整性，移除信任后需重新配对。</p></div></section></div>${footer()}`}
+<section class="settings-group" data-render-key="settings-updates"><h2>${icon('download')} 软件更新</h2><div class="setting"><div class="grow"><b>更新中心</b><small>${state.ota?.phase==='ready'?'安装包已就绪':state.ota?.phase==='available'?'发现可用更新':['downloading','verifying'].includes(state.ota?.phase)?'正在下载和校验更新':('当前版本 '+esc(state.version||'0.7.13'))}</small></div><button class="btn secondary" data-action="open-updates">打开更新中心</button></div></section>
+<section class="settings-group brand-about" data-render-key="settings-about"><div class="about-brand">${icon('bolt')}<div class="grow"><h2>闪传 Lantern <span class="version-pill">${esc(state.version||'0.7.13')}</span></h2></div><div class="about-actions"><button class="btn ghost" data-action="open-guide">使用引导</button><button class="btn ghost" data-action="privacy-info">隐私说明</button></div></div><div class="about-security"><p><b>设备之间直接分享</b><br>文字与文件在局域网内加密传输，无云端中转。设备昵称与发现广播不是身份凭证。</p><p><b>每次连接都验证身份</b><br>记住设备密钥；连接通过认证后才能接收。传输加密并校验完整性，移除信任后需重新配对。</p></div></section></div>${footer()}`}
 let modalOrigin=null;
 function openModal(html,type){
  closeFileMenu(false);const opening=modal.hidden,changed=modalType!==type;
@@ -583,8 +584,87 @@ function documentSection(section){
  const body=rows||(section.text?'<pre>'+esc(section.text)+'</pre>':'<p>这一部分没有可提取的内容。</p>');
  return '<section class="document-preview-section">'+(section.title?'<h3>'+esc(section.title)+'</h3>':'')+body+'</section>';
 }
-function existingMedia(file){
- const source=supportedPreviewSource(file.preview);
+const thumbnailCache=new Map(),thumbnailQueue=new Map(),observedThumbnails=new Set();
+let thumbnailLoading=false,thumbnailGeneration=0,thumbnailsEnabled=true;
+const thumbnailKey=(taskId,fileId)=>taskId+'/'+fileId;
+const canFetchThumbnail=file=>state.mode==='native'&&state.settings.thumbnails&&file.hasPreview===true&&!file.deleted;
+function thumbnailSource(file,task){
+ if(!state.settings.thumbnails||file.deleted)return null;
+ return supportedPreviewSource(file.preview)||(task&&canFetchThumbnail(file)?thumbnailCache.get(thumbnailKey(task.id,file.id)):null);
+}
+function rememberThumbnail(key,source){
+ thumbnailCache.delete(key);
+ thumbnailCache.set(key,source);
+ if(thumbnailCache.size>120)thumbnailCache.delete(thumbnailCache.keys().next().value);
+}
+const thumbnailObserver=new IntersectionObserver(entries=>{
+ for(const {target,isIntersecting} of entries){
+  if(!isIntersecting||!observedThumbnails.delete(target))continue;
+  thumbnailObserver.unobserve(target);
+  const {contextTask:taskId,contextFile:fileId}=target.dataset;
+  const key=thumbnailKey(taskId,fileId);
+  if(target.isConnected&&!thumbnailCache.has(key))thumbnailQueue.set(key,{taskId,fileId});
+ }
+ void loadVisibleThumbnails();
+},{rootMargin:'100px 0px'});
+function watchThumbnailTiles(){
+ for(const tile of observedThumbnails){
+  if(tile.isConnected&&tile.hasAttribute('data-lazy-thumbnail'))continue;
+  thumbnailObserver.unobserve(tile);
+  observedThumbnails.delete(tile);
+ }
+ if(!state.settings.thumbnails)return;
+ for(const tile of app.querySelectorAll('[data-lazy-thumbnail]')){
+  const key=thumbnailKey(tile.dataset.contextTask,tile.dataset.contextFile);
+  if(observedThumbnails.has(tile)||thumbnailCache.has(key)||thumbnailQueue.has(key))continue;
+  observedThumbnails.add(tile);
+  thumbnailObserver.observe(tile);
+ }
+}
+async function loadVisibleThumbnails(){
+ if(thumbnailLoading||!state.settings.thumbnails||!thumbnailQueue.size)return;
+ thumbnailLoading=true;
+ const generation=thumbnailGeneration;
+ const batch=[...thumbnailQueue].slice(0,8);
+ try{
+  const result=await command('preview-thumbnails',{items:batch.map(([,ids])=>ids)},false);
+  if(generation!==thumbnailGeneration)return;
+  if(result?.ok!==true){
+   for(const [key] of batch)thumbnailQueue.delete(key);
+   return;
+  }
+  const received=new Map((result?.thumbnails||[]).map(({taskId,fileId,source})=>[thumbnailKey(taskId,fileId),supportedPreviewSource(source)]));
+  for(const [key] of batch){
+   thumbnailQueue.delete(key);
+   rememberThumbnail(key,received.get(key)||null);
+  }
+  if(received.size)render();
+ }finally{
+  thumbnailLoading=false;
+  if(thumbnailQueue.size)void loadVisibleThumbnails();
+ }
+}
+function updateThumbnailPreference(){
+ const enabled=!!state.settings.thumbnails;
+ if(enabled===thumbnailsEnabled)return;
+ thumbnailsEnabled=enabled;
+ if(enabled)return;
+ thumbnailGeneration++;
+ thumbnailCache.clear();
+ thumbnailQueue.clear();
+ for(const tile of observedThumbnails)thumbnailObserver.unobserve(tile);
+ observedThumbnails.clear();
+}
+async function fetchThumbnail(taskId,fileId){
+ const generation=thumbnailGeneration;
+ const result=await command('preview-thumbnails',{items:[{taskId,fileId}]},false);
+ if(generation!==thumbnailGeneration)return null;
+ const source=supportedPreviewSource(result?.thumbnails?.find(row=>row.taskId===taskId&&row.fileId===fileId)?.source);
+ if(source)rememberThumbnail(thumbnailKey(taskId,fileId),source);
+ return source;
+}
+function existingMedia(file,task){
+ const source=thumbnailSource(file,task);
  if(file.videoUrl?.startsWith('blob:'))return '<video class="preview-media" controls src="'+esc(file.videoUrl)+'"></video>';
  return source&&state.settings.thumbnails?'<img class="preview-media" src="'+esc(source)+'" alt="'+esc(file.name)+'">':'';
 }
@@ -592,7 +672,7 @@ let documentRequest=0;
 async function previewFile(taskId,fileId){
  const task=state.tasks.find(t=>t.id===taskId),file=task?.files.find(f=>f.id===fileId);
  if(!file)return;
- const request=++documentRequest,kind=documentKind(file),ext=filenameExt(file.name),media=existingMedia(file);
+ const request=++documentRequest,kind=documentKind(file),ext=filenameExt(file.name),media=existingMedia(file,task);
  const available=kind&&state.mode==='native'&&!file.deleted&&(task.direction==='receive'?task.state==='completed'&&task.folder:['completed','failed','cancelled','rejected'].includes(task.state));
  const glyph=file.mime.startsWith('video/')?'video':file.mime.startsWith('image/')?'image':'file';
  const systemFile=fileUsable(file,task)||applePlatform(state.self.platform)&&file.canOpen&&!file.deleted&&recordEligible(task),systemFolder=task.direction==='receive'&&task.state==='completed'&&task.folder&&!file.deleted;
@@ -604,6 +684,14 @@ async function previewFile(taskId,fileId){
  const open=body=>openModal(title+'<div data-document-request="'+request+'">'+body+'</div>'+(footer?'<div class="modal-actions">'+footer+'</div>':''),'preview');
  const fallback=file.deleted?'本机文件已删除。':task.direction==='receive'&&task.state!=='completed'?'文件接收并校验完成后可以预览。':'可从文件所在位置用系统应用打开。';
  if(media&&!file.deleted){open(media);return;}
+ if(canFetchThumbnail(file)){
+  open(documentBody(null,true));
+  const source=await fetchThumbnail(taskId,fileId);
+  if(modalType==='preview'&&modal.querySelector('[data-document-request]')?.dataset.documentRequest===String(request)){
+   open(source?existingMedia(file,task):documentBody({message:fallback}));
+  }
+  return;
+ }
  if(!available){open(documentBody({message:fallback}));return;}
  open(documentBody(null,true));
  const result=await command('preview-document',{id:taskId,fileId});

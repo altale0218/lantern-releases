@@ -180,7 +180,7 @@ internal sealed class LanternTabs : UITabBarController
                 _ => UIUserInterfaceStyle.Unspecified
             };
             if (OverrideUserInterfaceStyle != appearance) OverrideUserInterfaceStyle = appearance;
-            string state = JsonSerializer.Serialize(await controller.GetStateAsync(), AppController.Json);
+            string state = JsonSerializer.Serialize(await controller.GetStateAsync(includeThumbnailData: false), AppController.Json);
             if (closing || suspended || state == lastState) return;
             await web.EvaluateJavaScriptAsync("window.lantern?.setState(" + state + ")");
             lastState = state;

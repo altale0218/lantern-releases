@@ -107,7 +107,7 @@ public sealed class MainActivity : Activity
     {
         Android.Util.Log.Error("Lantern.Startup", startupStage+": "+ex);
         if(destroyed||IsFinishing)return;
-        string diagnostic=$"Lantern 0.7.12\n阶段：{startupStage}\n设备：{Android.OS.Build.Manufacturer} {Android.OS.Build.Model}\nAndroid：{Android.OS.Build.VERSION.Release} / API {(int)Android.OS.Build.VERSION.SdkInt}\n错误：{ex}";
+        string diagnostic=$"Lantern 0.7.13\n阶段：{startupStage}\n设备：{Android.OS.Build.Manufacturer} {Android.OS.Build.Model}\nAndroid：{Android.OS.Build.VERSION.Release} / API {(int)Android.OS.Build.VERSION.SdkInt}\n错误：{ex}";
         var panel=new Android.Widget.LinearLayout(this){Orientation=Android.Widget.Orientation.Vertical};
         panel.SetPadding(32,64,32,32);
         var text=new Android.Widget.TextView(this){Text="启动未完成，请复制下面的诊断信息。\n\n"+diagnostic};
@@ -131,7 +131,7 @@ public sealed class MainActivity : Activity
                 {
                     (localDiscovery ??= new AndroidServiceDiscovery(this,controller)).Refresh();
                     ApplyTheme();
-                    string json=JsonSerializer.Serialize(await controller.GetStateAsync(),AppController.Json);
+                    string json=JsonSerializer.Serialize(await controller.GetStateAsync(includeThumbnailData: false),AppController.Json);
                     if(json!=previousState)
                     {
                         RunOnUiThread(()=>{try{if(!destroyed&&ready&&web is not null)web.EvaluateJavascript("window.lantern?.setState("+json+")",null);}catch(Exception ex){Android.Util.Log.Warn("Lantern.State",ex.ToString());}});
@@ -160,7 +160,7 @@ public sealed class MainActivity : Activity
                 case "test-transfer-notification":result=new{ok=true,message=transferNotifications?.Preview(true)};break;
                 default:result=await controller.DispatchAsync(command);break;
             }
-            if(id==0){ready=true;ApplyTheme();string stateJson=JsonSerializer.Serialize(await controller.GetStateAsync(),AppController.Json);web.EvaluateJavascript("window.lantern?.setState("+stateJson+",true)",null);web.PostVisualStateCallback(0,new ReadyFrame(this));}
+            if(id==0){ready=true;ApplyTheme();string stateJson=JsonSerializer.Serialize(await controller.GetStateAsync(includeThumbnailData: false),AppController.Json);web.EvaluateJavascript("window.lantern?.setState("+stateJson+",true)",null);web.PostVisualStateCallback(0,new ReadyFrame(this));}
             string json=JsonSerializer.Serialize(result,AppController.Json);
             if(!destroyed)web.EvaluateJavascript($"window.lanternNativeResult?.({id},{json})",null);
             if(ready&&showProgress){showProgress=false;web.EvaluateJavascript("window.lantern?.showProgress()",null);}

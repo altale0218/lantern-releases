@@ -147,7 +147,7 @@ public sealed class MainWindow : Form
                 web.ZoomFactor=controller.InterfaceScale/100d;
                 appliedScale=controller.InterfaceScale;
             }
-            string json=JsonSerializer.Serialize(await controller.GetStateAsync(), AppController.Json);
+            string json=JsonSerializer.Serialize(await controller.GetStateAsync(includeThumbnailData: false), AppController.Json);
             if(json!=previousState)
             {
                 await web.ExecuteScriptAsync("window.lantern?.setState(" + json + ")");

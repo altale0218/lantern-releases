@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.12";
-    public const int AndroidCode=45;
+    public const string Version="0.7.13";
+    public const int AndroidCode=46;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.12\n• 更新中心优先展示检查结果、下载来源和可执行操作，小屏无需先滑过更新日志。\n• 首次提示和更新中心支持按需展开更新日志，选源和检查状态也更容易辨认。\n• 更新下载显示进度、包大小和速度，简化设置页说明。";
+    public const string Notes="0.7.13\n• 图片与视频缩略图在聊天或进度页进入可视范围时载入，减少大批量图片记录的刷新开销。\n• 文件格式和传输进度先显示，滚动到文件时显示缩略图，点击仍可查看预览。\n• 关闭缩略图会清理界面缓存，重新开启后按可见范围载入。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

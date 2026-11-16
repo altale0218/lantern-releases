@@ -4,6 +4,41 @@ const check=(v,t)=>{assert.ok(v,t);checks++};const root=path.resolve(__dirname,'
 const server=http.createServer((q,r)=>fs.readFile(path.join(root,q.url==='/'?'index.html':q.url),(e,d)=>{r.setHeader('Content-Type',({'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml'})[path.extname(q.url)]||'text/html');r.statusCode=e?404:200;r.end(d)}));
 const fixture=platform=>({mode:'native',version:'0.7.2',self:{platform,name:platform==='Windows'?'演示电脑':'演示手机'},address:'192.0.2.1',settings:{theme:'light',autoAccept:true,discoverable:true,history:true,thumbnails:true,uiScale:100,fontScale:100,limitMiB:0,transferNotifications:true,windowsNotifications:true,windowsTaskbarProgress:true},connection:{known:true,lanAvailable:true,wifiEnabled:true,needsConnection:false},devices:[{id:'a'.repeat(32),conversationKey:'key-a',name:'示例手机',platform:'Android',trusted:true,online:true,status:'online',address:'192.0.2.10',pairedAt:'示例日期'},{id:'b'.repeat(32),conversationKey:'key-b',name:'示例电脑',platform:'Windows',trusted:true,online:false,status:'offline',address:'192.0.2.20',pairedAt:'示例日期'}],tasks:[{id:'demo-text',conversationKey:'key-a',peerId:'a'.repeat(32),peer:'示例手机',kind:'text',chatText:'这是一条虚构的界面演示消息。',name:'消息',direction:'receive',state:'completed',total:0,completed:0,created:'2025-01-01 12:00:00',files:[]}],pending:[],pairingRequests:[],ota:{phase:'idle'},releaseNotes:{version:'0.7.2',notes:'公开预览体验优化',showOnStartup:false},transferNotifications:{enabled:true}});
 async function route(p,name){await p.waitForFunction(name=>document.documentElement.dataset.page===name,name);await p.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{}))))}
+async function checkLazyThumbnails(p,platform){
+ await p.evaluate(()=>{
+  window.previousThumbnailTasks=fixture.tasks;
+  fixture.tasks=[{...fixture.tasks[0],id:'test-thumbnails',name:'虚构的照片传输',kind:'files',total:2048,completed:2048,
+   files:Array.from({length:24},(_,i)=>({id:'photo-'+i,name:'演示照片 '+i+'.png',mime:'image/png',size:512,completed:512,hasPreview:true}))}];
+  window.lantern.setState(fixture);
+ });
+ await p.locator('button[data-page="progress"]:visible').first().click();
+ await route(p,'progress');
+ const requested=()=>p.evaluate(()=>commands.filter(c=>c.type==='preview-thumbnails').flatMap(c=>c.items));
+ check((await requested()).length===0,platform+' collapsed tasks request no image data');
+ await p.locator('[data-expand="test-thumbnails"]').click();
+ const first=p.locator('[data-context-file="photo-0"]'),last=p.locator('[data-context-file="photo-23"]');
+ await first.scrollIntoViewIfNeeded();
+ await first.locator('img').waitFor();
+ check(!(await requested()).some(item=>item.fileId==='photo-23'),platform+' offscreen thumbnails do not cross the bridge');
+ await last.scrollIntoViewIfNeeded();
+ await last.locator('img').waitFor();
+ check((await requested()).some(item=>item.fileId==='photo-23'),platform+' scrolling a thumbnail into view loads it');
+ const batches=await p.evaluate(()=>commands.filter(c=>c.type==='preview-thumbnails').map(c=>c.items.length));
+ check(batches.every(n=>n>0&&n<=8),platform+' thumbnail bridge requests stay bounded');
+ await last.locator('[data-preview]').click();
+ await p.locator('#modal img.preview-media').waitFor();
+ await p.locator('#modal [data-action="close-modal"]').first().click();
+ await p.evaluate(()=>{fixture.settings.thumbnails=false;window.lantern.setState(fixture)});
+ check(await p.locator('.file-tile img').count()===0,platform+' disabling thumbnails clears the visible images');
+ const lastRequests=(await requested()).filter(item=>item.fileId==='photo-23').length;
+ await p.evaluate(()=>{fixture.settings.thumbnails=true;window.lantern.setState(fixture)});
+ await last.scrollIntoViewIfNeeded();
+ await last.locator('img').waitFor();
+ check((await requested()).filter(item=>item.fileId==='photo-23').length>lastRequests,platform+' re-enabling thumbnails fetches visible images again');
+ await p.evaluate(()=>{fixture.tasks=previousThumbnailTasks;fixture.settings.thumbnails=true;window.lantern.setState(fixture)});
+ await p.locator('button[data-page="transfer"]:visible').first().click();
+ await route(p,'transfer');
+}
 async function checkUpdateStages(p,platform){
  await p.evaluate(()=>{
   fixture.ota={phase:'available',message:'发现示例更新',release:{version:'9.9.9',source:'gitee',channel:'beta',size:2048,notes:'虚构的更新说明\n'.repeat(24)},
@@ -112,10 +147,11 @@ async function checkTouch(p,label){
 (async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});try{
  for(const platform of ['Android','Windows']){
   const p=await browser.newPage({viewport:platform==='Android'?{width:390,height:844}:{width:1260,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
-  await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);const sending=m.command.type==='send';const ok=!sending||!window.failNextSend;if(sending)window.failNextSend=false;const result={ok};if(m.command.type==='preview-selection')result.document={format:'PowerPoint',sections:Array.from({length:3},(_,i)=>({title:'幻灯片 '+(i+1),text:'虚构示例内容\n'.repeat(22)}))};if(m.id)setTimeout(()=>window.lanternNativeResult(m.id,result),sending?300:m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}});
+  await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);const sending=m.command.type==='send';const ok=!sending||!window.failNextSend;if(sending)window.failNextSend=false;const result={ok};if(m.command.type==='preview-selection')result.document={format:'PowerPoint',sections:Array.from({length:3},(_,i)=>({title:'幻灯片 '+(i+1),text:'虚构示例内容\n'.repeat(22)}))};if(m.command.type==='preview-thumbnails')result.thumbnails=m.command.items.map(item=>({...item,source:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII='}));if(m.id)setTimeout(()=>window.lanternNativeResult(m.id,result),sending?300:m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}});
   await p.goto('http://127.0.0.1:'+server.address().port);await p.evaluate(s=>{window.fixture=s;window.lantern.setState(s);window.lantern.setInsets({top:s.self.platform==='Android'?24:0,bottom:s.self.platform==='Android'?24:0})},fixture(platform));
   await checkNavigation(p,platform);
   await checkSendConfirmation(p,platform);
+  await checkLazyThumbnails(p,platform);
   check(await p.locator('.release-send-card').count()===1,platform+' compact sending workspace');check(await p.locator('.orbit-art').count()===0,platform+' oversized decorative orbit removed');
   check(await p.locator('.first-connection').count()===0,platform+' paired users do not see first-use guide');check(await p.locator('.release-device-card .fingerprint').count()===0,platform+' device identifiers are no longer always visible');
   check(!(await p.locator('.release-device-card').first().innerText()).includes('192.0.2.10'),platform+' address moved to details');
