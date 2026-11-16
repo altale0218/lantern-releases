@@ -1,0 +1,28 @@
+[
+  {
+    "tag_name": "v0.7.19",
+    "draft": false,
+    "prerelease": true,
+    "body": "Lantern 0.7.19 测试版。\n\n- Gitee 优先查询最新发布，发行数量增加后仍可找到新版。\n- 更新检查按所选频道继续查询后续发布页，稳定版可能排在多条测试版之后。\n- Windows 准备大批本地文件时复用已读取的文件属性。\n- Android 包 versionCode 52，沿用原发布签名。Windows 提供独立压缩包。",
+    "assets": [
+      {
+        "name": "Lantern-Android.apk",
+        "size": 47066739,
+        "digest": "sha256:a6204be106326311bd9d20c092defbfe0bb20f94e9557811b118246c8ce02b94",
+        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.19/Lantern-Android.apk"
+      },
+      {
+        "name": "Lantern-Windows.zip",
+        "size": 3406024,
+        "digest": "sha256:908340e1f8ccc8c18c1a4cb8df054efb3e2f3a392387b66839ba4bcae200b9ff",
+        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.19/Lantern-Windows.zip"
+      },
+      {
+        "name": "SHA256SUMS.txt",
+        "size": 172,
+        "digest": "sha256:1c95323a3498d75293ceb04d1bbcc43db8a3531c0ace2d87da46638b584921bf",
+        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.19/SHA256SUMS.txt"
+      }
+    ]
+  }
+]
