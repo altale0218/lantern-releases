@@ -1,0 +1,81 @@
+name: Android 17 startup and upgrade
+
+on:
+  push:
+    branches: [lantern-android-runtime-check]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  emulator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      IMAGE: system-images;android-37.0;google_apis;x86_64
+      SERIAL: emulator-5554
+      PACKAGE: com.lantern.transfer
+    steps:
+      - name: Test the published packages on Android 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          sudo chown "$USER" /dev/kvm
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          avdmanager="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/lantern-avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          "$sdkmanager" --channel=0 "emulator" "platform-tools" "$IMAGE" > "$RUNNER_TEMP/lantern-sdk.log" 2>&1 || {
+            tail -n 100 "$RUNNER_TEMP/lantern-sdk.log"; exit 1;
+          }
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          printf 'no\n' | "$avdmanager" create avd --name Lantern_API37 --package "$IMAGE" --device pixel_6 --force
+          "$ANDROID_HOME/emulator/emulator" -avd Lantern_API37 -port 5554 -no-window -no-audio \
+            -no-snapshot -no-boot-anim -gpu swiftshader_indirect -memory 4096 \
+            -camera-back none -camera-front none > "$RUNNER_TEMP/lantern-emulator.log" 2>&1 &
+          emu=$!
+          trap 'kill "$emu" 2>/dev/null || true' EXIT
+          device() { adb -s "$SERIAL" "$@"; }
+          for attempt in $(seq 1 90); do
+            if ! kill -0 "$emu" 2>/dev/null; then
+              tail -n 100 "$RUNNER_TEMP/lantern-emulator.log"; exit 1;
+            fi
+            if [ "$(device shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)" = 1 ]; then break; fi
+            sleep 3
+          done
+          test "$(device shell getprop sys.boot_completed | tr -d '\r')" = 1
+          test "$(device shell getprop ro.build.version.sdk | tr -d '\r')" = 37
+          device shell input keyevent 82
+          device logcat -b crash -c
+          download() {
+            version=$1
+            digest=$2
+            destination="$RUNNER_TEMP/lantern-$version.apk"
+            curl -fsSLo "$destination" --retry 3 --retry-all-errors \
+              "https://github.com/altale0218/lantern-releases/releases/download/v$version/Lantern-Android.apk"
+            printf '%s  %s\n' "$digest" "$destination" | sha256sum -c
+          }
+          startup() {
+            code=$1
+            version=$2
+            device shell dumpsys package "$PACKAGE" | grep -F "versionCode=$code " > "$RUNNER_TEMP/lantern-version.log"
+            device shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$PACKAGE"
+            for attempt in $(seq 1 20); do
+              if device shell dumpsys activity activities | grep -E "([Tt]opResumedActivity|mResumedActivity).*com\.lantern\.transfer/.*MainActivity" > "$RUNNER_TEMP/lantern-activity.log"; then break; fi
+              sleep 2
+            done
+            test -s "$RUNNER_TEMP/lantern-activity.log"
+            device shell pidof "$PACKAGE" > "$RUNNER_TEMP/lantern-pid.log"
+            test -s "$RUNNER_TEMP/lantern-pid.log"
+            if device logcat -b crash -d | grep -A 24 -F "Process: $PACKAGE"; then exit 1; fi
+            echo "PASS Lantern $version started the native Android main activity on API 37"
+          }
+          download 0.7.12 326afb81d9566bd3cc4927f487b57bc77f8340a21d879cc9c0e7ba264475380d
+          device install "$RUNNER_TEMP/lantern-0.7.12.apk"
+          startup 45 0.7.12
+          download 0.7.13 afac13923826e325011521aa0d22bc3be84a6f0fe9ec445fa08fe0365fff1140
+          device install -r "$RUNNER_TEMP/lantern-0.7.13.apk"
+          startup 46 0.7.13
+          echo "PASS same-signature upgrade preserved the application package"
