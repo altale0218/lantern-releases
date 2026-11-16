@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.8";
-    public const int AndroidCode=41;
+    public const string Version="0.7.9";
+    public const int AndroidCode=42;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.8\n• 仅递增版本号，用于验证 Android 0.7.7 通过服务器发现、下载、校验及安装更新。";
+    public const string Notes="0.7.9\n• 精简传输中心，选择文件更直接；Windows 关闭拖拽后同步隐藏拖拽提示。\n• 页面立即切换，短动效不阻塞操作；键盘切页后聚焦新标题。\n• 双端显示进行中的文件任务数，重排进度统计和展开入口，并优化低速读数。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

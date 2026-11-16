@@ -4,6 +4,36 @@ const check=(v,t)=>{assert.ok(v,t);checks++};const root=path.resolve(__dirname,'
 const server=http.createServer((q,r)=>fs.readFile(path.join(root,q.url==='/'?'index.html':q.url),(e,d)=>{r.setHeader('Content-Type',({'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml'})[path.extname(q.url)]||'text/html');r.statusCode=e?404:200;r.end(d)}));
 const fixture=platform=>({mode:'native',version:'0.7.2',self:{platform,name:platform==='Windows'?'演示电脑':'演示手机'},address:'192.0.2.1',settings:{theme:'light',autoAccept:true,discoverable:true,history:true,thumbnails:true,uiScale:100,fontScale:100,limitMiB:0,transferNotifications:true,windowsNotifications:true,windowsTaskbarProgress:true},connection:{known:true,lanAvailable:true,wifiEnabled:true,needsConnection:false},devices:[{id:'a'.repeat(32),conversationKey:'key-a',name:'示例手机',platform:'Android',trusted:true,online:true,status:'online',address:'192.0.2.10',pairedAt:'示例日期'},{id:'b'.repeat(32),conversationKey:'key-b',name:'示例电脑',platform:'Windows',trusted:true,online:false,status:'offline',address:'192.0.2.20',pairedAt:'示例日期'}],tasks:[{id:'demo-text',conversationKey:'key-a',peerId:'a'.repeat(32),peer:'示例手机',kind:'text',chatText:'这是一条虚构的界面演示消息。',name:'消息',direction:'receive',state:'completed',total:0,completed:0,created:'2025-01-01 12:00:00',files:[]}],pending:[],pairingRequests:[],ota:{phase:'idle'},releaseNotes:{version:'0.7.2',notes:'公开预览体验优化',showOnStartup:false},transferNotifications:{enabled:true}});
 async function route(p,name){await p.waitForFunction(name=>document.documentElement.dataset.page===name,name);await p.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{}))))}
+async function checkNavigation(p,platform){
+ const progress=p.locator('nav button[data-page="progress"]:visible');
+ await p.evaluate(()=>{
+  fixture.tasks.push({...fixture.tasks[0],id:'active-message',state:'transferring'},
+   {...fixture.tasks[0],id:'active-transfer',kind:'file',state:'transferring',total:100,completed:40});
+  window.lantern.setState(fixture);
+ });
+ check((await progress.getAttribute('aria-label'))?.includes('1 个进行中的文件任务'),platform+' navigation counts only active file tasks');
+ await progress.focus();
+ await p.keyboard.press('Enter');
+ check(await p.evaluate(()=>document.documentElement.dataset.page==='progress'&&document.activeElement.matches('.main h1')),platform+' keyboard tab activation moves focus to the page heading');
+ const immediate=await p.evaluate(()=>{
+  const activate=target=>[...document.querySelectorAll(`nav button[data-page="${target}"]`)].find(button=>button.getClientRects().length).click();
+  for(const target of ['history','settings','transfer','history','transfer']){
+   activate(target);
+   if(document.documentElement.dataset.page!==target||document.querySelector('.content').inert)return false;
+   window.lantern.setState(fixture);
+  }
+  return true;
+ });
+ check(immediate,platform+' consecutive navigation and snapshots commit immediately without disabling content');
+ await route(p,'transfer');
+ await p.evaluate(()=>{fixture.tasks.splice(-2);window.lantern.setState(fixture)});
+ if(platform==='Windows'){
+  check((await p.locator('#drop-area').innerText()).includes('拖入文件'),'Windows offers dragging by default');
+  await p.evaluate(()=>{fixture.settings.allowFileDrop=false;window.lantern.setState(fixture)});
+  check(!(await p.locator('#drop-area').innerText()).includes('拖入文件'),'Windows hides drag instructions when dragging is disabled');
+  await p.evaluate(()=>{delete fixture.settings.allowFileDrop;window.lantern.setState(fixture)});
+ }
+}
 async function checkTouch(p,label){
  const result=await p.evaluate(()=>{
   const nodes=[...document.querySelectorAll('button,button *,a,a *,input,select,textarea,summary,summary *,[role="button"],[role="button"] *,[role="switch"],[role="menuitem"],[role="menuitem"] *,[data-device],[data-device] *')];
@@ -16,6 +46,7 @@ async function checkTouch(p,label){
   const p=await browser.newPage({viewport:platform==='Android'?{width:390,height:844}:{width:1260,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
   await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);if(m.id)setTimeout(()=>window.lanternNativeResult(m.id,{ok:true}),m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}});
   await p.goto('http://127.0.0.1:'+server.address().port);await p.evaluate(s=>{window.fixture=s;window.lantern.setState(s);window.lantern.setInsets({top:s.self.platform==='Android'?24:0,bottom:s.self.platform==='Android'?24:0})},fixture(platform));
+  await checkNavigation(p,platform);
   check(await p.locator('.release-send-card').count()===1,platform+' compact sending workspace');check(await p.locator('.orbit-art').count()===0,platform+' oversized decorative orbit removed');
   check(await p.locator('.first-connection').count()===0,platform+' paired users do not see first-use guide');check(await p.locator('.release-device-card .fingerprint').count()===0,platform+' device identifiers are no longer always visible');
   check(!(await p.locator('.release-device-card').first().innerText()).includes('192.0.2.10'),platform+' address moved to details');
