@@ -161,7 +161,8 @@ jobs:
                               click_node(node)
                           return
                   time.sleep(1)
-              print("Visible test labels:", [text for n in recent for text in labels(n) if text][-32:])
+              print("Visible test labels:", [(n.get("class"), n.get("resource-id"), text)
+                  for n in recent for text in labels(n) if text][-32:])
               raise RuntimeError(description)
           def text_button(text, seconds=70):
               wait_for(lambda n: text in labels(n), "Missing control: " + text, seconds, tap=True)
@@ -179,8 +180,9 @@ jobs:
               time.sleep(1)
           else:
               raise RuntimeError("Could not enter the update center after onboarding")
-          wait_for(lambda n: "稳定版" in labels(n) or any("稳定版" in v and "更新渠道" in v for v in labels(n)),
-              "Stable channel is not visible", tap=True)
+          wait_for(lambda n: "稳定版" in labels(n) or (
+              "更新渠道" in labels(n) and (n.get("clickable") == "true" or n.get("class") == "android.widget.Spinner")),
+              "The update channel selection control is not visible", tap=True)
           text_button("测试版")
           text_button("检查更新")
           text_button("下载更新", 95)
