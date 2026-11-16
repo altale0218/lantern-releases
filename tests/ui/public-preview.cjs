@@ -40,6 +40,7 @@ async function checkSendConfirmation(p,platform){
   devices.push({...devices[0],id:'fictional-unpaired',name:'虚构未配对设备',trusted:false});
   window.lantern.setState({...fixture,devices});
   const files=Array.from({length:33},(_,i)=>({id:String(i),name:'演示附件 '+i+'.txt',size:512,mime:'text/plain'}));
+  files[0]={id:'0',name:'虚构的演示文档.pptx',size:512,mime:'application/vnd.openxmlformats-officedocument.presentationml.presentation'};
   window.lantern.acceptDropped({ok:true,selection:files,selectionId:'example-selection'});
  });
  const dialog=p.getByRole('dialog',{name:'选择发送对象'}),search=dialog.getByRole('searchbox');
@@ -47,6 +48,12 @@ async function checkSendConfirmation(p,platform){
  await dialog.locator('.send-file-disclosure summary').click();
  await dialog.locator('[data-action="send-more-files"]').click();
  check(await dialog.locator('.selection-file').count()===33,platform+' additional selected files stay available');
+ check(await dialog.locator('.send-file-disclosure').evaluate(details=>details.open),platform+' loading another file page keeps the file disclosure open');
+ await dialog.locator('[data-selection-preview="0"]').click();
+ const outline=dialog.getByRole('combobox',{name:'跳到文档中的部分'});
+ await outline.selectOption('2');
+ check(await dialog.locator('.document-preview-content').evaluate(region=>region.scrollTop>0),platform+' multi-section previews navigate inside the reading area');
+ await dialog.locator('[data-action="close-selection-preview"]').click();
  await dialog.locator('.send-file-disclosure summary').click();
  check(await dialog.getByRole('checkbox').count()===8,platform+' unpaired targets are excluded');
  await search.fill('设备 0');
@@ -84,7 +91,7 @@ async function checkTouch(p,label){
 (async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});try{
  for(const platform of ['Android','Windows']){
   const p=await browser.newPage({viewport:platform==='Android'?{width:390,height:844}:{width:1260,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
-  await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);const sending=m.command.type==='send';const ok=!sending||!window.failNextSend;if(sending)window.failNextSend=false;if(m.id)setTimeout(()=>window.lanternNativeResult(m.id,{ok}),sending?300:m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}});
+  await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);const sending=m.command.type==='send';const ok=!sending||!window.failNextSend;if(sending)window.failNextSend=false;const result={ok};if(m.command.type==='preview-selection')result.document={format:'PowerPoint',sections:Array.from({length:3},(_,i)=>({title:'幻灯片 '+(i+1),text:'虚构示例内容\n'.repeat(22)}))};if(m.id)setTimeout(()=>window.lanternNativeResult(m.id,result),sending?300:m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}});
   await p.goto('http://127.0.0.1:'+server.address().port);await p.evaluate(s=>{window.fixture=s;window.lantern.setState(s);window.lantern.setInsets({top:s.self.platform==='Android'?24:0,bottom:s.self.platform==='Android'?24:0})},fixture(platform));
   await checkNavigation(p,platform);
   await checkSendConfirmation(p,platform);
