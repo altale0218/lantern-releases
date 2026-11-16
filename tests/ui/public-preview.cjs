@@ -4,6 +4,43 @@ const check=(v,t)=>{assert.ok(v,t);checks++};const root=path.resolve(__dirname,'
 const server=http.createServer((q,r)=>fs.readFile(path.join(root,q.url==='/'?'index.html':q.url),(e,d)=>{r.setHeader('Content-Type',({'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml'})[path.extname(q.url)]||'text/html');r.statusCode=e?404:200;r.end(d)}));
 const fixture=platform=>({mode:'native',version:'0.7.2',self:{platform,name:platform==='Windows'?'演示电脑':'演示手机'},address:'192.0.2.1',settings:{theme:'light',autoAccept:true,discoverable:true,history:true,thumbnails:true,uiScale:100,fontScale:100,limitMiB:0,transferNotifications:true,windowsNotifications:true,windowsTaskbarProgress:true},connection:{known:true,lanAvailable:true,wifiEnabled:true,needsConnection:false},devices:[{id:'a'.repeat(32),conversationKey:'key-a',name:'示例手机',platform:'Android',trusted:true,online:true,status:'online',address:'192.0.2.10',pairedAt:'示例日期'},{id:'b'.repeat(32),conversationKey:'key-b',name:'示例电脑',platform:'Windows',trusted:true,online:false,status:'offline',address:'192.0.2.20',pairedAt:'示例日期'}],tasks:[{id:'demo-text',conversationKey:'key-a',peerId:'a'.repeat(32),peer:'示例手机',kind:'text',chatText:'这是一条虚构的界面演示消息。',name:'消息',direction:'receive',state:'completed',total:0,completed:0,created:'2025-01-01 12:00:00',files:[]}],pending:[],pairingRequests:[],ota:{phase:'idle'},releaseNotes:{version:'0.7.2',notes:'公开预览体验优化',showOnStartup:false},transferNotifications:{enabled:true}});
 async function route(p,name){await p.waitForFunction(name=>document.documentElement.dataset.page===name,name);await p.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{}))))}
+async function checkProgressHistory(p,platform){
+ await p.evaluate(()=>{
+  window.tasksBeforeProgress=fixture.tasks;
+  const file={peer:'示例设备',name:'虚构测试文件.txt',total:4,completed:4,created:'2025-01-01 12:00:00',files:[],state:'completed'};
+  fixture.tasks=Array.from({length:122},(_,i)=>({...file,id:'progress-fixture-'+i,direction:i%2?'send':'receive'}));
+  fixture.tasks.push({...file,id:'progress-active',direction:'send',total:8,completed:2,state:'transferring'});
+  fixture.tasks.push({...file,id:'progress-text',direction:'send',kind:'text',chatText:'虚构演示消息'});
+  window.lantern.setState(fixture);
+ });
+ await p.locator('[data-page="progress"]:visible').first().click();
+ await route(p,'progress');
+ check(await p.locator('.task-card').count()===40,platform+' progress draws the first page');
+ check(await p.locator('.task-card').first().getAttribute('data-render-key')==='task-progress-active',platform+' active task first');
+ check(await p.locator('[data-total-bytes]').getAttribute('data-total-bytes')==='496',platform+' totals include all file pages');
+ const more=p.locator('[data-action="more-tasks"]');
+ await more.focus();
+ await p.keyboard.press('Enter');
+ check(await p.locator('.task-card').count()===80,platform+' progress loads one more page');
+ check(await p.evaluate(()=>document.activeElement===document.querySelectorAll('.task-card')[40]),platform+' progress moves keyboard focus to new items');
+ await p.locator('[data-filter="send"]').click();
+ check(await p.locator('.task-card').count()===40,platform+' changing direction resets the page');
+ await p.locator('[data-action="record-mode"]').click();
+ await p.locator('[data-action="select-records"]').click();
+ check(await p.locator('[data-select-record][aria-checked="true"]').count()===39,platform+' select all covers shown completed outgoing records');
+ await p.locator('[data-filter="receive"]').click();
+ check(await p.locator('[data-action="delete-records"]').isDisabled(),platform+' direction change clears old selection');
+ await p.locator('[data-action="select-records"]').click();
+ await p.evaluate(()=>{commands.length=0});
+ await p.locator('[data-action="delete-records"]').click();
+ await p.locator('[data-action="confirm-records"]').click();
+ const deletion=await p.evaluate(()=>commands.find(command=>command.type==='delete-records'));
+ check(deletion?.confirmed&&deletion.ids.length===40&&deletion.ids.every((id,index)=>id==='progress-fixture-'+(index*2)),platform+' native delete only receives the shown incoming IDs');
+ await p.locator('[data-filter="all"]').click();
+ await p.evaluate(()=>{fixture.tasks=tasksBeforeProgress;window.lantern.setState(fixture)});
+ await p.locator('[data-page="transfer"]:visible').first().click();
+ await route(p,'transfer');
+}
 async function checkLazyThumbnails(p,platform){
  await p.evaluate(()=>{
   window.previousThumbnailTasks=fixture.tasks;
@@ -184,6 +221,7 @@ async function checkTouch(p,label){
   await checkNavigation(p,platform);
   await checkDiscoveredPairing(p,platform);
   await checkSendConfirmation(p,platform);
+   await checkProgressHistory(p,platform);
   await checkLazyThumbnails(p,platform);
   check(await p.locator('.release-send-card').count()===1,platform+' compact sending workspace');check(await p.locator('.orbit-art').count()===0,platform+' oversized decorative orbit removed');
   check(await p.locator('.first-connection').count()===0,platform+' paired users do not see first-use guide');check(await p.locator('.release-device-card .fingerprint').count()===0,platform+' device identifiers are no longer always visible');

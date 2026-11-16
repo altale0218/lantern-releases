@@ -187,6 +187,9 @@
 .task-toolbar .record-toolbar>.btn{min-height:40px;font-size:calc(13px * var(--font-scale,1))}
 .tasks-heading .collapse-btn{display:inline-flex;justify-content:center;min-width:40px;min-height:40px;padding:0 9px;border:1px solid var(--line);border-radius:10px}
 .tasks-heading .collapse-btn svg{width:16px;height:16px}
+.task-list-more{display:flex;justify-content:center;margin:16px 0 4px}
+.task-list-more .btn{max-width:100%;white-space:normal;text-align:center}
+.task-card[tabindex="-1"]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .task-summary{gap:10px;padding:16px}
 .task-actions{gap:6px}
 .task-title h3{line-height:1.5;font-weight:600}

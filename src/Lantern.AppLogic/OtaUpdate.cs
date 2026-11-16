@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.17";
-    public const int AndroidCode=50;
+    public const string Version="0.7.18";
+    public const int AndroidCode=51;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.17\n• Windows 和 Android 文件选择后在后台整理文件信息，界面可继续响应。\n• 文本和普通文件直接准备；图片和视频预览以受限的并行数处理，保留原文件顺序。\n• 安卓更新按系统版本读取已安装应用和候选包的版本、签名信息，复用已取得的安装包信息。";
+    public const string Notes="0.7.18\n• 传输进度按页显示任务，进行中的任务置顶。统计包含当前筛选下的全部文件任务。\n• 批量管理仅选择已显示的已结束文件任务，切换发送或接收筛选会清除之前的选择。\n• 键盘加载更多任务时，焦点跳到新加载的第一条。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

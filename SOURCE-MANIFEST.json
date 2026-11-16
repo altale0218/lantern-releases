@@ -1,6 +1,6 @@
 {
   "kind": "reviewed-source-snapshot",
-  "version": "0.7.17",
+  "version": "0.7.18",
   "license": "MIT (prepared for maintainer review)",
   "includesGitHistory": false,
   "includesRuntimeData": false,
@@ -48,8 +48,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 10196,
-      "sha256": "ca845554953d1fd34ccde240794e2dfdc9e40b461a10ac62d10031c3036399f1"
+      "bytes": 10510,
+      "sha256": "bb162a5de68968a81b73479a21c4056c8a4921eeb3bfbf36dbef2b5f38ecf484"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -184,7 +184,7 @@
     {
       "path": "README.md",
       "bytes": 5752,
-      "sha256": "f814f1d56b10d187479ef2bafe9216f1a7023420777150cce83418713288567f"
+      "sha256": "cb3cef058a1a9c831c9980dfb53d29f5a5f3370c7aea6e18056a8f3e75416a28"
     },
     {
       "path": "SECURITY.md",
@@ -214,12 +214,12 @@
     {
       "path": "src/Lantern.Android/Lantern.Android.csproj",
       "bytes": 2125,
-      "sha256": "b2a2fee12ab1edfe4e6e9afaa495cc98db71e6e24e28e929dd9534a3f7c08806"
+      "sha256": "f9dcfb30182b5295d496d335a46c32dea5864aa62550811ccca03a2b2c9bc0c8"
     },
     {
       "path": "src/Lantern.Android/MainActivity.cs",
       "bytes": 19945,
-      "sha256": "75661ad3d6e13ab9164f149c5ddcf1faa70d331bc6b1522a59d22298317518c3"
+      "sha256": "50bc8e5fb89729370f559d61864e75b0385af4eafff39116737d0cedd48cc23a"
     },
     {
       "path": "src/Lantern.Android/Native/BrandSplashView.java",
@@ -229,7 +229,7 @@
     {
       "path": "src/Lantern.Android/Native/CrashCaptureApplication.java",
       "bytes": 2562,
-      "sha256": "8646192c4900ff125bc5e8afd9029c09a08a89378f2c2b02c14a3aaab21ddb17"
+      "sha256": "211fc7e0aa2e5022586ae261721a652c8339f02e28af2f5baa1fd6922946c630"
     },
     {
       "path": "src/Lantern.Android/Native/CrashJournal.java",
@@ -239,7 +239,7 @@
     {
       "path": "src/Lantern.Android/Native/StartupActivity.java",
       "bytes": 9143,
-      "sha256": "c1aca721c97634cf4036618eb3cbcd26cced24414c21f24746dcbefe19546422"
+      "sha256": "95a7478562bf235a201a997004327d5fa8fa625d77640c1ea244f7da5c091d16"
     },
     {
       "path": "src/Lantern.Android/Native/StartupManifestOverlay.xml",
@@ -343,8 +343,8 @@
     },
     {
       "path": "src/Lantern.AppLogic/OtaUpdate.cs",
-      "bytes": 12282,
-      "sha256": "75313765a426c104c866f918a9588b24a98fdfcac2477fc07c0c21d897b265be"
+      "bytes": 12247,
+      "sha256": "495daa1f88777fe8a4691c5527853db3b6735d1e510423432579091585f569f1"
     },
     {
       "path": "src/Lantern.AppLogic/Pairing.cs",
@@ -454,7 +454,7 @@
     {
       "path": "src/Lantern.iOS/Lantern.iOS.csproj",
       "bytes": 1062,
-      "sha256": "d329f2cddb973ee2438c3f7759f0a53c04b7099e43361d76090739e425555f59"
+      "sha256": "0c1593508eb6c9974728eb37b907bed76e44ea99699f1f94ba10b7968103eab9"
     },
     {
       "path": "src/Lantern.iOS/LanternTabs.cs",
@@ -484,7 +484,7 @@
     {
       "path": "src/Lantern.Windows/Lantern.Windows.csproj",
       "bytes": 1529,
-      "sha256": "b23bb05c5aec74f38c7f3233c6477c78c423b0ec01f3d68cc5b9711bc708586f"
+      "sha256": "ba9bcc98919bde7f68257b12d60e99c753d9c51e5a65117dae3b310cef6bf132"
     },
     {
       "path": "src/Lantern.Windows/Program.cs",
@@ -738,8 +738,8 @@
     },
     {
       "path": "tests/ui/public-preview.cjs",
-      "bytes": 26584,
-      "sha256": "f3bea77cb6eb2e6bb6ba054698ccd4fa63c570d58528768c7c1d9160088042d3"
+      "bytes": 29411,
+      "sha256": "ea82fefa861236f273b8b259dc6b3bedc8a99981f1e8181fc95798c3700e8a68"
     },
     {
       "path": "tests/ui/speed-test.cjs",
@@ -788,8 +788,8 @@
     },
     {
       "path": "ui/app.js",
-      "bytes": 134559,
-      "sha256": "010349d662d3c2664da30489ab3b086d329b8d77ab65b019aae6bd915da58308"
+      "bytes": 136072,
+      "sha256": "1a6cf12e0a860314eb058eb35ef44025b072475a8ad560a6f069e050193d4094"
     },
     {
       "path": "ui/coast.svg",
@@ -828,8 +828,8 @@
     },
     {
       "path": "ui/polish.css",
-      "bytes": 48947,
-      "sha256": "d1e2b24a5dc940a8bc1cdae1a09dc3f6304ac2c5c23ea2ea303a35d11ed8a94f"
+      "bytes": 49184,
+      "sha256": "3867b061742c5524e38ad7b9890102588ee1f6398c8115872b54d56b64d86e27"
     },
     {
       "path": "ui/style.css",
