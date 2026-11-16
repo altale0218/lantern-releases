@@ -33,7 +33,7 @@ jobs:
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
           printf 'no\n' | "$avdmanager" create avd --name Lantern_API37 --package "$IMAGE" --device pixel_6 --force
           "$ANDROID_HOME/emulator/emulator" -avd Lantern_API37 -port 5554 -no-window -no-audio \
-            -no-snapshot -no-boot-anim -gpu swiftshader_indirect -memory 4096 \
+            -no-snapshot -no-boot-anim -gpu swiftshader_indirect -memory 4096 -partition-size 8192 \
             -camera-back none -camera-front none > "$RUNNER_TEMP/lantern-emulator.log" 2>&1 &
           emu=$!
           trap 'kill "$emu" 2>/dev/null || true' EXIT
@@ -54,6 +54,8 @@ jobs:
             sleep 3
           done
           test -s "$RUNNER_TEMP/lantern-package-service.log"
+          echo "Android guest data partition before installation"
+          device shell df -h /data
           device logcat -b crash -c
           download() {
             version=$1
@@ -84,4 +86,7 @@ jobs:
           download 0.7.13 afac13923826e325011521aa0d22bc3be84a6f0fe9ec445fa08fe0365fff1140
           device install -r "$RUNNER_TEMP/lantern-0.7.13.apk"
           startup 46 0.7.13
+          download 0.7.14 70659fc6b81bcda8a35e8d3ee1c39d140690b402bb55e576c6bf85e596623ccb
+          device install -r "$RUNNER_TEMP/lantern-0.7.14.apk"
+          startup 47 0.7.14
           echo "PASS same-signature upgrade preserved the application package"
