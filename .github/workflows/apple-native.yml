@@ -10,13 +10,21 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-26-intel
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26-intel
+            rid: iossimulator-x64
+          - runner: macos-26
+            rid: iossimulator-arm64
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 35
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       DOTNET_NOLOGO: '1'
       DOTNET_SDK: 10.0.401
-      SIMULATOR_RID: iossimulator-x64
+      SIMULATOR_RID: ${{ matrix.rid }}
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
       - uses: actions/checkout@v7
@@ -97,10 +105,12 @@ jobs:
             echo "iPhone simulator app exited early; collecting only relevant failure details"
             grep -Eh 'Unhandled|Exception|Error|Abort|Fatal|^   at ' "$RUNNER_TEMP/lantern-app-out.log" "$RUNNER_TEMP/lantern-app-error.log" | tail -n 25 || true
             executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")"
-            xcrun simctl spawn "$device" log show --last 2m --style compact \
-              --predicate "process == \"$executable\" OR eventMessage CONTAINS[c] \"$app_id\"" \
-              | grep -Ei 'Unhandled|Abort|dyld|Fatal|Symbol not found|Exception|crashed|termination|exited' | tail -n 25 || true
-            find "$HOME/Library/Logs/DiagnosticReports" -type f -name '*Lantern*.ips' -mmin -10 -print0 | while IFS= read -r -d '' report; do
+            xcrun simctl spawn "$device" log show --last 2m --info --style compact \
+              --predicate "processID == $pid OR process == \"$executable\" OR eventMessage CONTAINS[c] \"$app_id\"" \
+              | grep -Ei 'Unhandled|Abort|dyld|Fatal|Symbol not found|Exception|crashed|termination|exited|code sign|lantern\.ios' | tail -n 35 || true
+            sleep 12
+            find "$HOME/Library/Logs/DiagnosticReports" "$HOME/Library/Developer/CoreSimulator/Devices/$device/data/Library/Logs" \
+              -type f -name '*Lantern*.ips' -mmin -10 -print0 2>/dev/null | while IFS= read -r -d '' report; do
               python3 - "$report" <<'PY'
           import json, sys
           with open(sys.argv[1], encoding="utf-8") as stream:
@@ -115,7 +125,7 @@ jobs:
                   if any(marker in line for marker in ("Symbol not found", "Library not loaded", "no suitable image", "Assertion failed")):
                       print(line.rsplit("/",1)[-1][:180])
           PY
-            done
+            done || true
             exit 1
           fi
           data="$(xcrun simctl get_app_container "$device" "$app_id" data)"
