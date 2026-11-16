@@ -75,7 +75,21 @@ jobs:
             echo "Selected launcher component: $launcher"
             device shell am force-stop --user 0 "$PACKAGE"
             device logcat -b crash -c
-            device shell am start -W -n "$launcher"
+            started=false
+            for launch_attempt in 1 2 3; do
+              if device shell am start -W -n "$launcher" > "$RUNNER_TEMP/lantern-launch.log" 2>&1; then
+                cat "$RUNNER_TEMP/lantern-launch.log"
+                started=true
+                break
+              fi
+              cat "$RUNNER_TEMP/lantern-launch.log"
+              if ! grep -Eqi 'broken pipe|deadobject' "$RUNNER_TEMP/lantern-launch.log"; then break; fi
+              sleep 3
+            done
+            if [ "$started" != true ]; then
+              device logcat -b crash -d | tail -n 48 || true
+              exit 1
+            fi
             for attempt in $(seq 1 30); do
               if device shell dumpsys activity activities | grep -E "([Tt]opResumedActivity|mResumedActivity).*com\.lantern\.transfer/(\.MainActivity|com\.lantern\.transfer\.MainActivity)" > "$RUNNER_TEMP/lantern-activity.log" && device shell pidof "$PACKAGE" > "$RUNNER_TEMP/lantern-pid.log"; then
                 break
