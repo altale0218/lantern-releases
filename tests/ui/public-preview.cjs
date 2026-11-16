@@ -4,6 +4,27 @@ const check=(v,t)=>{assert.ok(v,t);checks++};const root=path.resolve(__dirname,'
 const server=http.createServer((q,r)=>fs.readFile(path.join(root,q.url==='/'?'index.html':q.url),(e,d)=>{r.setHeader('Content-Type',({'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml'})[path.extname(q.url)]||'text/html');r.statusCode=e?404:200;r.end(d)}));
 const fixture=platform=>({mode:'native',version:'0.7.2',self:{platform,name:platform==='Windows'?'演示电脑':'演示手机'},address:'192.0.2.1',settings:{theme:'light',autoAccept:true,discoverable:true,history:true,thumbnails:true,uiScale:100,fontScale:100,limitMiB:0,transferNotifications:true,windowsNotifications:true,windowsTaskbarProgress:true},connection:{known:true,lanAvailable:true,wifiEnabled:true,needsConnection:false},devices:[{id:'a'.repeat(32),conversationKey:'key-a',name:'示例手机',platform:'Android',trusted:true,online:true,status:'online',address:'192.0.2.10',pairedAt:'示例日期'},{id:'b'.repeat(32),conversationKey:'key-b',name:'示例电脑',platform:'Windows',trusted:true,online:false,status:'offline',address:'192.0.2.20',pairedAt:'示例日期'}],tasks:[{id:'demo-text',conversationKey:'key-a',peerId:'a'.repeat(32),peer:'示例手机',kind:'text',chatText:'这是一条虚构的界面演示消息。',name:'消息',direction:'receive',state:'completed',total:0,completed:0,created:'2025-01-01 12:00:00',files:[]}],pending:[],pairingRequests:[],ota:{phase:'idle'},releaseNotes:{version:'0.7.2',notes:'公开预览体验优化',showOnStartup:false},transferNotifications:{enabled:true}});
 async function route(p,name){await p.waitForFunction(name=>document.documentElement.dataset.page===name,name);await p.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{}))))}
+async function checkUpdateStages(p,platform){
+ await p.evaluate(()=>{
+  fixture.ota={phase:'available',message:'发现示例更新',release:{version:'9.9.9',source:'gitee',channel:'beta',size:2048,notes:'虚构的更新说明\n'.repeat(24)},
+   sources:[{id:'github',status:'timeout'},{id:'gitee',status:'available'}]};
+  window.lantern.setState(fixture);
+ });
+ const download=p.locator('[data-action="ota-download"]');
+ check(await download.evaluate(button=>button.getBoundingClientRect().bottom<=innerHeight),platform+' available download action is visible before scrolling');
+ check((await p.locator('.update-release-meta').innerText()).includes('Gitee'),platform+' selected source is visible beside the next version');
+ check(!await p.locator('.update-release-log').evaluate(details=>details.open),platform+' long notes do not push down the primary action');
+ await p.locator('.update-source-details summary').click();
+ await p.evaluate(()=>{fixture.ota.phase='downloading';fixture.ota.completed=512;fixture.ota.speed=512;window.lantern.setState(fixture)});
+ check(await p.getByRole('progressbar',{name:'更新下载进度'}).getAttribute('aria-valuenow')==='25',platform+' update progress is readable and has an accessible value');
+ check(await p.locator('#ota-source').isDisabled(),platform+' source stays locked during download');
+ check(await p.locator('.update-source-details').evaluate(details=>details.open),platform+' opened source diagnostics stay open during progress refresh');
+ await p.evaluate(()=>{fixture.ota.phase='ready';window.lantern.setState(fixture)});
+ check((await p.locator('[data-action="ota-install"]').innerText()).includes(platform==='Android'?'安装更新':'打开安装包目录'),platform+' verified installer uses the platform-specific action');
+ await p.evaluate(()=>{fixture.ota.phase='current';window.lantern.setState(fixture)});
+ check(await p.locator('.update-release-log').count()===0&&await p.locator('.current-release .release-notes').count()===1,platform+' current version displays only its own notes');
+ await p.evaluate(()=>{fixture.ota={phase:'idle'};window.lantern.setState(fixture)});
+}
 async function checkNavigation(p,platform){
  const progress=p.locator('nav button[data-page="progress"]:visible');
  await p.evaluate(()=>{
@@ -123,6 +144,7 @@ async function checkTouch(p,label){
    check(await p.locator('#ota-source').inputValue()==='auto' && await p.locator('#ota-channel').inputValue()==='stable',platform+' '+theme+' default update source and channel');
    check(await p.locator('[data-action="ota-check"]').isEnabled()&&await p.locator('#ota-peer').count()===0,platform+' '+theme+' server updates work without a paired PC');
    check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),platform+' '+theme+' update instructions fit viewport');
+   if(theme==='dark')await checkUpdateStages(p,platform);
    await p.locator('[data-action="secondary-back"]:visible').first().click();await route(p,'transfer');
   }
   await p.keyboard.press('Tab');

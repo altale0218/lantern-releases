@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.11";
-    public const int AndroidCode=44;
+    public const string Version="0.7.12";
+    public const int AndroidCode=45;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.11\n• 收到新消息时保留正在浏览的旧记录与位置，可以一键回到最新消息。\n• 聊天页仅排列当前会话，设备列表仅整理最新消息；保留草稿与设备分组。\n• 多部分文档可直接跳转至指定章节、幻灯片或工作表。\n• 修复发送确认时加载下一批附件会折叠文件列表的问题。";
+    public const string Notes="0.7.12\n• 更新中心优先展示检查结果、下载来源和可执行操作，小屏无需先滑过更新日志。\n• 首次提示和更新中心支持按需展开更新日志，选源和检查状态也更容易辨认。\n• 更新下载显示进度、包大小和速度，简化设置页说明。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

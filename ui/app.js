@@ -102,7 +102,7 @@ function renderFrame(){if(fileMenu&&state.self.platform!=='Windows')closeFileMen
  const current=page==='chat'?currentConversation():null,title=({transfer:'传输中心',progress:'传输进度',history:'设备聊天',settings:'设置',chat:current?.name||'聊天',updates:'更新中心','speed-test':'连接测速'})[page]||'传输中心';
  const updateButton=page!=='updates'?'<button class="icon-btn update-entry" data-action="open-updates" aria-label="更新中心" title="检查更新与更新日志">'+icon('download')+(state.ota?.phase==='available'||state.ota?.phase==='ready'?'<i class="update-dot"></i>':'')+'</button>':'';
  const peerAvatar=page==='chat'&&current?.device?'<span class="conversation-avatar '+(current.device.online?'is-online':'')+'" aria-hidden="true">'+icon(deviceIcon(current.device.platform))+'</span>':'';
- const header=secondary?'<button class="icon-btn secondary-back" data-action="secondary-back" aria-label="返回">'+icon('arrow')+'</button>'+peerAvatar+'<div class="grow secondary-title"><h1 tabindex="-1">'+esc(title)+'</h1><small>'+esc(page==='chat'?(current?.device?.online?'在线 · 端到端加密':'设备离线 · 可以查看历史记录'):page==='speed-test'?'局域网 · 双向测速':'Lantern '+(state.version||'0.7.11'))+'</small></div>'+(page==='chat'?'<button class="icon-btn" data-action="refresh-devices" aria-label="刷新设备状态">'+icon('refresh')+'</button><button class="icon-btn" data-action="chat-record-menu" aria-label="聊天记录管理" aria-pressed="'+recordMode+'" title="'+(recordMode?'退出记录多选':'管理聊天记录')+'">'+icon('log')+'</button>':'')+updateButton:'<h1 class="android-title" tabindex="-1">'+title+'</h1><div class="breadcrumb">闪传 Lantern <span>/ &nbsp; '+title+'</span></div><div class="topbar-actions">'+networkBadge()+(applePlatform(state.self.platform)&&page==='transfer'?'<button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button>':'')+updateButton+'</div>';
+ const header=secondary?'<button class="icon-btn secondary-back" data-action="secondary-back" aria-label="返回">'+icon('arrow')+'</button>'+peerAvatar+'<div class="grow secondary-title"><h1 tabindex="-1">'+esc(title)+'</h1><small>'+esc(page==='chat'?(current?.device?.online?'在线 · 端到端加密':'设备离线 · 可以查看历史记录'):page==='speed-test'?'局域网 · 双向测速':'Lantern '+(state.version||'0.7.12'))+'</small></div>'+(page==='chat'?'<button class="icon-btn" data-action="refresh-devices" aria-label="刷新设备状态">'+icon('refresh')+'</button><button class="icon-btn" data-action="chat-record-menu" aria-label="聊天记录管理" aria-pressed="'+recordMode+'" title="'+(recordMode?'退出记录多选':'管理聊天记录')+'">'+icon('log')+'</button>':'')+updateButton:'<h1 class="android-title" tabindex="-1">'+title+'</h1><div class="breadcrumb">闪传 Lantern <span>/ &nbsp; '+title+'</span></div><div class="topbar-actions">'+networkBadge()+(applePlatform(state.self.platform)&&page==='transfer'?'<button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button>':'')+updateButton+'</div>';
  const activeTransfers=secondary?0:state.tasks.reduce((count,task)=>count+(isActiveFileTask(task)?1:0),0);
  const sidebar=secondary?'':'<aside class="sidebar"><div class="brand"><div class="brand-icon">'+icon('bolt')+'</div><span>闪传<small>LANTERN</small></span></div><div class="nav-label">设备与传输</div><nav aria-label="主导航">'+navigationButtons(activeTransfers,false)+'</nav><div class="sidebar-foot">'+(state.settings.showSidebarSecurityHint?'<div class="secure-note">'+icon('shield','shield')+'<h3>只在你的设备之间</h3><p>密码认证配对 · 端到端加密<br>无需服务器，文件留在局域网。</p><button class="link" data-page="settings">查看安全设置 '+icon('arrow')+'</button></div>':'')+'<div class="self-device"><div class="self-avatar">'+icon(deviceIcon(state.self.platform))+'</div><div class="grow"><b>'+esc(state.self.name)+'</b><small>本机 · '+esc(state.self.platform)+'</small></div><button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button></div></div></aside>';
  const content=page==='transfer'?transferPage():page==='progress'?progressPage():page==='history'?historyPage():page==='chat'?chatPage(current):page==='updates'?updatesPage():page==='speed-test'?speedTestPage():settingsPage();
@@ -369,35 +369,65 @@ function applySizing(){
  return changed;
 }
 function sizingSettings(){return [['uiScale','界面缩放','调整整体控件、图标和页面尺寸。'],['fontScale','字体大小','单独调整文字大小，可与界面缩放组合。']].map(([key,title,hint])=>`<div class="setting"><div class="grow"><b>${title}</b><small>${hint}</small></div><select data-setting="${key}" aria-label="${title}">${[90,100,110,125,150].map(v=>`<option value="${v}" ${Number(state.settings[key]||100)===v?'selected':''}>${v}%${v===100?' · 默认':''}</option>`).join('')}</select></div>`).join('')}
-function updatesPage(){return '<div class="update-page-heading"><div class="update-logo">'+icon('bolt')+'</div><div><h2>软件更新</h2><p>'+(applePlatform(state.self.platform)?'查看 iPhone 与 iPad 版本及更新日志。':'直接从发布服务器检查和下载更新。')+'</p></div></div><div class="update-layout">'+updateSettings()+'<section class="settings-group current-release"><h2>'+icon('log')+'当前版本更新日志</h2><b class="update-version">Lantern '+esc(state.version||'0.7.11')+'</b><pre class="release-notes">'+esc(state.releaseNotes?.notes||'')+'</pre></section></div>'}
-const updateServers={auto:'自动选择',github:'GitHub',gitee:'Gitee'};
-const updateStatuses={available:'发现新版',current:'已是最新',empty:'暂无发行版',unavailable:'暂不可用',timeout:'请求超时',invalid:'校验信息无效',conflict:'校验信息冲突'};
-function updateSettings(){
- const o=state.ota||{},release=o.release,android=state.self.platform==='Android',busy=['checking','downloading','verifying'].includes(o.phase),locked=busy||o.phase==='ready';
- if(applePlatform(state.self.platform))return `<section class="settings-group"><h2>${icon('download')} iPhone 与 iPad 版本</h2><p class="update-help">当前版本 ${esc(state.version||'0.7.11')}。请在 App Store 或 TestFlight 查看本机适用的版本。</p></section>`;
- const channels={stable:'稳定版',beta:'测试版'};
- const field=(id,label,options,value)=>`<div class="setting"><label class="grow" for="${id}"><b>${label}</b></label><select id="${id}" ${locked?'disabled':''}>${Object.entries(options).map(([key,title])=>`<option value="${key}" ${key===value?'selected':''}>${title}</option>`).join('')}</select></div>`;
- return `<section class="settings-group" data-render-key="ota-server"><h2>${icon('download')} 检查更新</h2><p class="update-help">${android?'通过互联网访问发布服务器。已校验的安装包可稍后安装。':'从服务器下载并校验 Windows ZIP，随后由你手动更新。'}</p>
- ${field('ota-channel','更新渠道',channels,state.settings.updateChannel||'stable')}${field('ota-source','下载来源',updateServers,state.settings.updateSource||'auto')}
- ${android&&!state.canInstallUpdates?'<div class="setting"><div class="grow"><b>安装更新权限</b><small>可在安卓系统设置中允许闪传安装已校验的更新。</small></div><button class="btn secondary" data-action="ota-install-permission">打开系统设置</button></div>':''}
- <p class="update-status" role="status">${esc(o.message||'连接互联网后即可检查更新。')}</p>
- ${o.sources?.length?`<ul class="update-help">${o.sources.map(item=>`<li>${esc(updateServers[item.id]||item.id)} · ${esc(updateStatuses[item.status]||item.status)}</li>`).join('')}</ul>`:''}
- ${release?`<div class="available-release"><b class="update-version">Lantern ${esc(release.version)} · ${bytes(release.size)}</b><p class="update-help">${esc(updateServers[release.source]||'发布服务器')} · ${esc(channels[release.channel]||'')}</p><pre class="release-notes">${esc(release.notes)}</pre></div>`:''}
- ${busy&&release?`<div class="progress-track"><div class="progress-fill" style="--progress:${progressRatio((o.completed||0)/release.size*100)}"></div></div><p class="update-help">${bytes(o.completed||0)} / ${bytes(release.size)} · ${((o.speed||0)/1048576).toFixed(1)} MB/s</p>`:''}
- <div class="update-actions"><button class="btn secondary" data-action="ota-check" ${locked?'disabled':''}>${icon('refresh')}检查更新</button>${o.phase==='available'?'<button class="btn primary" data-action="ota-download">下载更新</button>':''}${o.phase==='downloading'?'<button class="btn secondary" data-action="ota-cancel">取消下载</button>':''}${o.phase==='ready'?`<button class="btn primary" data-action="ota-install">${android?'安装更新':'打开安装包目录'}</button><button class="btn ghost" data-action="ota-clear-confirm">删除安装包</button>`:''}</div></section>`;
+function updatesPage(){
+ return '<div class="update-layout">'+updateSettings()+
+  '<section class="settings-group current-release"><h2>'+icon('log')+'当前版本更新日志</h2><b class="update-version">Lantern '+
+  esc(state.version||'0.7.12')+'</b><pre class="release-notes">'+esc(state.releaseNotes?.notes||'')+'</pre></section></div>';
 }
-function settingsPage(){const windows=state.self.platform==='Windows',apple=applePlatform(state.self.platform),status=state.transferNotifications||{};return `${heading('设置','连接、接收、外观与通知。')}<div class="preferences-grid">
-<section class="settings-group" data-render-key="settings-receive"><h2>${icon('shield')} 接收与连接</h2>${settingToggle('autoAccept','自动接收已认证设备的文件','默认开启。仅已配对且本次连接通过密钥认证的设备可以自动保存文件；关闭后逐次确认。')}${settingToggle('discoverable','允许局域网发现','让同一局域网的设备找到你；发现设备不会自动建立信任。')}<div class="setting"><div class="grow"><b>接收位置</b><small>${esc(state.inbox||'手机存储 / Download / Lantern')}<br>按任务保存，重名文件自动区分。</small></div>${apple?'':`<div class="preference-actions"><button class="btn secondary" data-action="choose-receive-folder">更改位置</button>${windows?'<button class="btn ghost" data-action="reset-receive-folder">恢复下载文件夹</button>':''}</div>`}</div></section>
-<section class="settings-group" data-render-key="settings-appearance"><h2>${icon('eye')} 外观</h2><div class="setting"><div class="grow"><b>颜色主题</b><small>启动页、应用与系统栏同步配色。</small></div><select data-setting="theme" aria-label="颜色主题">${[['system','跟随系统'],['dark','深色模式'],['light','浅色模式']].map(([v,l])=>'<option value="'+v+'" '+((state.settings.theme||'system')===v?'selected':'')+'>'+l+'</option>').join('')}</select></div>${sizingSettings()}</section>
+const updateServers={auto:'自动选择',github:'GitHub',gitee:'Gitee'};
+const updateChannels={stable:'稳定版',beta:'测试版'};
+const updateStatuses={available:'发现新版',current:'已是最新',empty:'暂无发行版',unavailable:'暂不可用',timeout:'请求超时',invalid:'校验信息无效',conflict:'校验信息冲突'};
+function updateReleaseLog(notes){
+ return notes?'<details class="update-release-log" data-motion-disclosure><summary>新版更新日志</summary><pre class="release-notes">'+esc(notes)+'</pre></details>':'';
+}
+function updateSettings(){
+ if(applePlatform(state.self.platform))return '<section class="settings-group"><h2>'+icon('download')+' iPhone 与 iPad 版本</h2>'+
+  '<p class="update-help">请在 App Store 或 TestFlight 查看本机适用的版本。</p></section>';
+ const update=state.ota||{},phase=update.phase||'idle',android=state.self.platform==='Android';
+ const busy=['checking','downloading','verifying'].includes(phase),locked=busy||phase==='ready';
+ const release=['available','downloading','verifying','ready'].includes(phase)?update.release:null;
+ const statusTitle={idle:'版本检查',current:'已是最新版本',checking:'正在检查更新',failed:'更新未完成'}[phase]||'软件更新';
+ const title=release?'Lantern '+release.version:statusTitle;
+ const metadata=release?[updateChannels[release.channel],updateServers[release.source],bytes(release.size)].filter(Boolean).join(' · '):'';
+ const field=(id,label,options,value)=>'<label class="update-option" for="'+id+'"><b>'+label+'</b><select id="'+id+'"'+(locked?' disabled':'')+'>'+
+  Object.entries(options).map(([key,text])=>'<option value="'+key+'"'+(key===value?' selected':'')+'>'+text+'</option>').join('')+'</select></label>';
+ const primary={
+  available:'<button class="btn primary" data-action="ota-download">'+icon('download')+'下载更新</button>',
+  downloading:'<button class="btn secondary" data-action="ota-cancel">取消下载</button>',
+  ready:'<button class="btn primary" data-action="ota-install">'+(android?'安装更新':'打开安装包目录')+'</button>'+
+   '<button class="btn ghost" data-action="ota-clear-confirm">删除安装包</button>'
+ }[phase]||'';
+ const check='<button class="btn '+(primary?'secondary':'primary')+'" data-action="ota-check"'+(locked?' disabled':'')+'>'+
+  icon('refresh')+(phase==='checking'?'正在检查…':'检查更新')+'</button>';
+ const progress=progressRatio((update.completed||0)/(release?.size||1)*100);
+ const telemetry=busy&&release?'<div class="update-telemetry"><div class="progress-track" role="progressbar" aria-label="更新下载进度" aria-valuenow="'+Math.round(progress*100)+'">'+
+  '<div class="progress-fill" style="--progress:'+progress+'"></div></div><p class="update-help">'+bytes(update.completed||0)+' / '+bytes(release.size)+
+  (update.speed>0?' · '+bytes(update.speed)+'/s':'')+'</p></div>':'';
+ const permission=android&&!state.canInstallUpdates?'<div class="setting"><div class="grow"><b>安装更新权限</b>'+
+  '<small>可在安卓系统设置中允许闪传安装已校验的更新。</small></div><button class="btn secondary" data-action="ota-install-permission">打开系统设置</button></div>':'';
+ const sources=update.sources?.length?'<details class="update-source-details" data-motion-disclosure><summary>发布源状态</summary><ul>'+
+  update.sources.map(item=>'<li><b>'+esc(updateServers[item.id]||item.id)+'</b><span>'+esc(updateStatuses[item.status]||item.status)+'</span></li>').join('')+'</ul></details>':'';
+ const guidance=android?'通过互联网访问发布服务器。已校验的安装包可稍后安装。':'从服务器下载并校验 Windows ZIP，随后由你手动更新。';
+ return '<section class="settings-group update-console" data-render-key="ota-server"><div class="update-status-head"><span class="update-status-icon">'+icon(phase==='current'?'check':'download')+'</span>'+
+  '<div class="grow"><h2>'+esc(title)+'</h2>'+(metadata?'<p class="update-release-meta">'+esc(metadata)+'</p>':'')+'</div></div>'+
+  '<div class="update-actions">'+primary+check+'</div>'+
+  '<p class="update-status" role="status">'+esc(update.message||'连接互联网后即可检查更新。')+'</p>'+telemetry+updateReleaseLog(release?.notes)+
+  '<div class="update-option-grid">'+field('ota-channel','更新渠道',updateChannels,state.settings.updateChannel||'stable')+
+  field('ota-source','下载来源',updateServers,state.settings.updateSource||'auto')+'</div>'+
+  '<p class="update-help update-platform-help">'+guidance+'</p>'+permission+sources+'</section>';
+}
+function settingsPage(){const windows=state.self.platform==='Windows',apple=applePlatform(state.self.platform),status=state.transferNotifications||{};return `${heading('设置')}<div class="preferences-grid">
+<section class="settings-group" data-render-key="settings-receive"><h2>${icon('shield')} 接收与连接</h2>${settingToggle('autoAccept','自动接收认证设备的文件','仅在已配对设备通过密钥认证后自动保存。关闭后每次确认。')}${settingToggle('discoverable','允许局域网发现','让同一局域网的设备找到你。发现不会自动配对。')}<div class="setting"><div class="grow"><b>接收位置</b><small>${esc(state.inbox||'手机存储 / Download / Lantern')}</small></div>${apple?'':`<div class="preference-actions"><button class="btn secondary" data-action="choose-receive-folder">更改位置</button>${windows?'<button class="btn ghost" data-action="reset-receive-folder">恢复下载文件夹</button>':''}</div>`}</div></section>
+<section class="settings-group" data-render-key="settings-appearance"><h2>${icon('eye')} 外观</h2><div class="setting"><div class="grow"><b>颜色主题</b><small>同步应用与系统栏配色。</small></div><select data-setting="theme" aria-label="颜色主题">${[['system','跟随系统'],['dark','深色模式'],['light','浅色模式']].map(([v,l])=>'<option value="'+v+'" '+((state.settings.theme||'system')===v?'selected':'')+'>'+l+'</option>').join('')}</select></div>${sizingSettings()}</section>
 <section class="settings-group" data-render-key="settings-files"><h2>${icon('log')} 文件与记录</h2>${settingToggle('thumbnails','图片和视频缩略图','在本机生成预览；接收文件完成校验后才生成。')}${settingToggle('history','保存聊天与传输记录','文字、记录与缩略图加密保存在本机；关闭后仅保留当前会话。')}${windows?settingToggle('allowFileDrop','拖拽文件发送','拖入窗口任意位置，再选择一个或多个发送对象。'):''}<details class="advanced-settings" data-motion-disclosure><summary>高级传输选项</summary><div class="setting"><div class="grow"><b>发送速度上限</b><small>为其他应用预留带宽。</small></div><select data-setting="limitMiB" aria-label="发送速度上限">${[[0,'不限速'],[10,'10 MB/s'],[30,'30 MB/s'],[60,'60 MB/s']].map(([v,l])=>'<option value="'+v+'" '+(Number(state.settings.limitMiB)===v?'selected':'')+'>'+l+'</option>').join('')}</select></div></details></section>
 ${apple?'':`<section class="settings-group" data-render-key="settings-notifications"><h2>${icon('bell')} 通知</h2>${windows?settingToggle('windowsNotifications','系统传输通知','显示传输开始、完成与失败；点击通知返回应用。')+settingToggle('windowsTaskbarProgress','任务栏传输进度','在任务栏图标显示任务合并进度。'):settingToggle('transferNotifications','通知栏传输状态','合并显示进度、速度与结果；传输期间请保持应用运行。')}${settingToggle('notificationDetails','在通知中显示文件名','默认关闭，保护通知区域的内容隐私。')}${windows?'':'<div class="setting"><div class="grow"><b>系统通知权限</b><small>'+(status.enabled?'已允许系统通知，可在系统设置管理。':'需要系统授权才能显示通知栏传输状态。')+'</small></div><button class="btn secondary" data-action="'+(status.enabled?'notification-settings':'notification-permission')+'">'+(status.enabled?'系统设置':'允许通知')+'</button></div>'}</section>`}
-<section class="settings-group" data-render-key="settings-updates"><h2>${icon('download')} 软件更新</h2><div class="setting"><div class="grow"><b>更新中心</b><small>${state.ota?.phase==='ready'?'安装包已就绪':state.ota?.phase==='available'?'发现可用更新':['downloading','verifying'].includes(state.ota?.phase)?'正在下载和校验更新':('当前版本 '+esc(state.version||'0.7.11'))}</small></div><button class="btn secondary" data-action="open-updates">打开更新中心</button></div></section>
-<section class="settings-group brand-about" data-render-key="settings-about"><div class="about-brand">${icon('bolt')}<div class="grow"><h2>闪传 Lantern <span class="version-pill">${esc(state.version||'0.7.11')}</span></h2><p>快速直连，尊重每一份隐私。</p></div><div class="about-actions"><button class="btn ghost" data-action="open-guide">使用引导</button><button class="btn ghost" data-action="privacy-info">隐私说明</button></div></div><div class="about-security"><p><b>设备之间直接分享</b><br>文字与文件在局域网内加密传输，无云端中转。设备昵称与发现广播不是身份凭证。</p><p><b>每次连接都验证身份</b><br>记住设备密钥；连接通过认证后才能接收。传输加密并校验完整性，移除信任后需重新配对。</p></div></section></div>${footer()}`}
+<section class="settings-group" data-render-key="settings-updates"><h2>${icon('download')} 软件更新</h2><div class="setting"><div class="grow"><b>更新中心</b><small>${state.ota?.phase==='ready'?'安装包已就绪':state.ota?.phase==='available'?'发现可用更新':['downloading','verifying'].includes(state.ota?.phase)?'正在下载和校验更新':('当前版本 '+esc(state.version||'0.7.12'))}</small></div><button class="btn secondary" data-action="open-updates">打开更新中心</button></div></section>
+<section class="settings-group brand-about" data-render-key="settings-about"><div class="about-brand">${icon('bolt')}<div class="grow"><h2>闪传 Lantern <span class="version-pill">${esc(state.version||'0.7.12')}</span></h2></div><div class="about-actions"><button class="btn ghost" data-action="open-guide">使用引导</button><button class="btn ghost" data-action="privacy-info">隐私说明</button></div></div><div class="about-security"><p><b>设备之间直接分享</b><br>文字与文件在局域网内加密传输，无云端中转。设备昵称与发现广播不是身份凭证。</p><p><b>每次连接都验证身份</b><br>记住设备密钥；连接通过认证后才能接收。传输加密并校验完整性，移除信任后需重新配对。</p></div></section></div>${footer()}`}
 let modalOrigin=null;
 function openModal(html,type){
  closeFileMenu(false);const opening=modal.hidden,changed=modalType!==type;
  if(!modalType)modalOrigin=document.activeElement;
- const label={pair:'配对设备',send:'选择发送对象',release:'版本更新说明',network:'连接局域网',preview:'文件预览','first-guide':'使用引导'}[type]||'任务操作';
+ const label={pair:'配对设备',send:'选择发送对象',release:'版本更新说明',network:'连接局域网',preview:'文件预览','first-guide':'使用引导','update-invite':'软件更新','ota-clear':'删除更新安装包'}[type]||'任务操作';
  modalType=type;window.LanternDOM.patch(modal,`<section class="modal ${type==='preview'?'file-preview-modal':type==='first-guide'?'guide-modal':type==='send'?'send-modal':''}" role="dialog" aria-modal="true" aria-label="${label}">${html}</section>`);
  modal.hidden=false;app.inert=true;
  if(opening)sendNativePresentationState(true);
@@ -817,7 +847,7 @@ function updatePrompts(next){
  const o=next.ota,r=o?.release,key=r?r.versionCode+':'+r.sha256:'';
  if(next.mode==='native'&&next.self.platform==='Android'&&r&&['available','ready'].includes(o.phase)&&!updateInvites.has(key)&&!modalType){
   updateInvites.add(key);
-  if(page!=='updates')openModal(modalTop('download')+'<span class="release-kicker">'+(o.phase==='ready'?'安装包已校验':'发现可用更新')+'</span><h2>Lantern '+esc(r.version)+'</h2><p>'+bytes(r.size)+' · '+esc(updateServers[r.source]||'发布服务器')+'</p><pre class="release-notes">'+esc(r.notes)+'</pre><div class="modal-actions"><button class="btn secondary" data-action="close-modal">稍后</button><button class="btn primary" data-action="view-update">'+(o.phase==='ready'?'查看并安装':'查看更新')+'</button></div>','update-invite');
+  if(page!=='updates')openModal(modalTop('download')+'<span class="release-kicker">'+(o.phase==='ready'?'安装包已校验':'发现可用更新')+'</span><h2>Lantern '+esc(r.version)+'</h2><p>'+bytes(r.size)+' · '+esc(updateServers[r.source]||'发布服务器')+'</p><div class="modal-actions"><button class="btn secondary" data-action="close-modal">稍后</button><button class="btn primary" data-action="view-update">'+(o.phase==='ready'?'查看并安装':'查看更新')+'</button></div>'+updateReleaseLog(r.notes),'update-invite');
  }
  if(!modalType&&next.tasks?.some(t=>t.kind!=='text'&&['connecting','transferring','saving'].includes(t.state)))inviteTransferNotifications();
  

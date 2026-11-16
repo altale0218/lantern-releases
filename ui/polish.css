@@ -213,6 +213,31 @@
 .update-page-heading{margin-top:0}
 .update-layout .settings-group h2{margin-bottom:14px}
 .update-layout .settings-group{padding-bottom:20px}
+.update-status-head{display:flex;align-items:center;gap:10px}
+.update-status-icon{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:10px;background:var(--panel2);color:var(--accent)}
+.update-status-icon svg{width:21px;height:21px}
+:root .settings-group.update-console .update-status-head h2{padding:0;border:0;margin:0;font-size:calc(18px * var(--font-scale,1));overflow-wrap:anywhere}
+.update-release-meta{margin:4px 0 0;color:var(--muted);font-size:calc(13px * var(--font-scale,1));line-height:1.5;overflow-wrap:anywhere}
+.update-console .update-status{margin:10px 0;line-height:1.6;overflow-wrap:anywhere}
+.update-console .update-actions{margin:12px 0;gap:8px}
+.update-option-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,calc(120px * var(--font-scale,1))),1fr));gap:10px;margin:12px 0}
+.update-option{display:grid;gap:6px;min-width:0;font-size:calc(13px * var(--font-scale,1));line-height:1.45}
+.update-option select{min-width:0;width:100%;min-height:42px;padding:6px 9px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--text)}
+.update-platform-help{margin:8px 0;overflow-wrap:anywhere}
+:is(.update-console,.modal) .update-release-log,.update-console .update-source-details{border:1px solid var(--line);border-radius:10px;padding:0 10px;margin:10px 0}
+.update-console details summary,.modal .update-release-log summary{cursor:pointer;min-height:40px;padding:8px 0;line-height:1.55;font-size:calc(13px * var(--font-scale,1))}
+.update-release-log .release-notes{margin:0 0 10px}
+.update-source-details ul{margin:0 0 8px;padding:0;list-style:none}
+.update-source-details li{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:5px 0;color:var(--muted);font-size:calc(13px * var(--font-scale,1))}
+.update-source-details li b{color:var(--text)}
+.update-telemetry .update-help{margin:6px 0 0;font-variant-numeric:tabular-nums}
+@media (orientation:landscape) and (max-height:460px){
+ :root[data-platform="Android"][data-page="updates"] .secondary-topbar{min-height:calc(var(--safe-top) + 48px);padding-block:calc(var(--safe-top) + 4px) 4px}
+ :root[data-platform="Android"][data-page="updates"] .secondary-title h1{font-size:calc(18px * var(--font-scale,1))}
+ :root[data-platform="Android"][data-page="updates"] .secondary-title small{display:none}
+ :root[data-platform="Android"] .settings-group.update-console{padding-block:10px}
+ :root[data-platform="Android"] .update-console .update-actions{margin-block:6px}
+}
 .release-notes{border-radius:10px;line-height:1.75}
 .modal{border-radius:18px;box-shadow:0 24px 72px #0005}
 .modal-top{margin-bottom:12px}
