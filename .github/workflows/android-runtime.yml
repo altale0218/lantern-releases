@@ -106,13 +106,31 @@ jobs:
             if device logcat -b crash -d | grep -A 24 -F "Process: $PACKAGE"; then exit 1; fi
             echo "PASS Lantern $version started the native Android main activity on API 37"
           }
-          download 0.7.17 dc629ac6d1fd0db8cd87cf9d99626de74b0c197322637326188b2eda0d36b7b2
-          device install --no-streaming "$RUNNER_TEMP/lantern-0.7.17.apk"
-          startup 50 0.7.17
-          download 0.7.19 a6204be106326311bd9d20c092defbfe0bb20f94e9557811b118246c8ce02b94
-          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.19.apk"
-          startup 52 0.7.19
           download 0.7.21 27255805c785f3b703200a3a220ca4560624cce80cab6ea86083d8449c40c55a
-          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.21.apk"
+          device install --no-streaming "$RUNNER_TEMP/lantern-0.7.21.apk"
           startup 54 0.7.21
+          download 0.7.22 4486819305819fb34b8261e8e2526e84a5d9bca38c7e40cdc9be417f0476d2f1
+          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.22.apk"
+          startup 55 0.7.22
           echo "PASS same-signature upgrade preserved the application package"
+          original_pid="$(device shell pidof "$PACKAGE" | tr -d '\r')"
+          device shell input keyevent KEYCODE_HOME
+          backgrounded=false
+          for attempt in $(seq 1 12); do
+            if ! device shell dumpsys activity activities | grep -E "([Tt]opResumedActivity|mResumedActivity).*com\.lantern\.transfer/"; then
+              backgrounded=true; break
+            fi
+            sleep 1
+          done
+          test "$backgrounded" = true
+          sleep 3
+          test "$original_pid" = "$(device shell pidof "$PACKAGE" | tr -d '\r')"
+          device shell am start -W -n "$launcher"
+          for attempt in $(seq 1 16); do
+            if device shell dumpsys activity activities | grep -E "([Tt]opResumedActivity|mResumedActivity).*com\.lantern\.transfer/(\.MainActivity|com\.lantern\.transfer\.MainActivity)" > "$RUNNER_TEMP/lantern-resumed.log"; then break; fi
+            sleep 1
+          done
+          test -s "$RUNNER_TEMP/lantern-resumed.log"
+          test "$original_pid" = "$(device shell pidof "$PACKAGE" | tr -d '\r')"
+          if device logcat -b crash -d | grep -A 24 -F "Process: $PACKAGE"; then exit 1; fi
+          echo "PASS Android launcher resumed the same process and native activity after Home"
