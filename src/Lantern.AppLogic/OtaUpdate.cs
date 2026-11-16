@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.18";
-    public const int AndroidCode=51;
+    public const string Version="0.7.19";
+    public const int AndroidCode=52;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.18\n• 传输进度按页显示任务，进行中的任务置顶。统计包含当前筛选下的全部文件任务。\n• 批量管理仅选择已显示的已结束文件任务，切换发送或接收筛选会清除之前的选择。\n• 键盘加载更多任务时，焦点跳到新加载的第一条。";
+    public const string Notes="0.7.19\n• Gitee 更新检测先查询最新发布，版本多时也能发现新版本。\n• 服务器查询会按渠道查找后续发行页，稳定版可在连续测试版之后被发现。\n• Windows 准备文件时复用一次读取的文件属性。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);
@@ -137,6 +137,8 @@ public sealed partial class AppController
                 ota=new("available","发现新版，请阅读更新日志后确认下载",release,Sources:statuses);
             else if(check.Sources.Any(p=>p.Status=="conflict"))
                 ota=new("failed","各来源的同版安装包校验信息不一致，已暂停下载",Sources:statuses);
+            else if(check.Sources.Any(p=>p.Status=="limited"))
+                ota=new("failed","近期发行记录中未找到该渠道的新版本，可切换来源重试",Sources:statuses);
             else if(check.Sources.Any(p=>p.Status=="current"))
                 ota=new("current","当前版本已是所选服务器提供的最新版",Sources:statuses);
             else if(check.Sources.Any(p=>p.Status=="empty"))

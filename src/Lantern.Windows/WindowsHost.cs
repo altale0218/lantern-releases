@@ -63,12 +63,13 @@ public sealed class WindowsHost(Form owner) : IPlatformHost
             if (files.Length > Transfers.MaxFiles) throw new IOException("一次最多选择 1000 个文件");
             var result = files.Select(file =>
             {
-                if (!File.Exists(file) || Directory.Exists(file)) throw new IOException("请拖入本机文件；文件夹暂不支持");
                 var info = new FileInfo(file);
+                if (!info.Exists) throw new IOException("请拖入本机文件；文件夹暂不支持");
+                string localPath = info.FullName;
                 var source = new SourceFile(info.Name, info.Length, Mime(info.Extension), () =>
-                    Task.FromResult<Stream>(new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024,
+                    Task.FromResult<Stream>(new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024,
                         FileOptions.Asynchronous | FileOptions.SequentialScan)));
-                return new PickedFile(source, null, info.FullName);
+                return new PickedFile(source, null, localPath);
             }).ToArray();
 
             var media = Enumerable.Range(0, result.Length).Where(index => HasThumbnail(result[index].Source.Mime));

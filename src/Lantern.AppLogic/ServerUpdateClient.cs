@@ -32,15 +32,19 @@ internal sealed record ServerCheck(ServerRelease? Release,ServerProbe[] Sources)
 
 public sealed class ServerUpdateClient : IDisposable
 {
-    private record Mirror(string Id,string Catalog,string Releases,string[] Hosts);
+    private const int CatalogPageSize=30,CatalogPageLimit=4;
+    private record Mirror(string Id,Uri Catalog,string Releases,string[] Hosts)
+    {
+        public Uri CatalogPage(int page) => new(Catalog,$"?per_page={CatalogPageSize}&page={page}"+(Id=="gitee"?"&direction=desc":""));
+    }
     private record RemoteAsset(string Name,[property:JsonPropertyName("browser_download_url")] string? BrowserUrl,long? Size,string? Digest);
     private record RemoteRelease([property:JsonPropertyName("tag_name")] string TagName,bool Draft,bool Prerelease,string? Body,RemoteAsset[]? Assets);
 
     private static readonly Mirror[] Mirrors =
     [
-        new("github","https://api.github.com/repos/altale0218/lantern-releases/releases?per_page=30",
+        new("github",new("https://api.github.com/repos/altale0218/lantern-releases/releases"),
             "https://github.com/altale0218/lantern-releases/releases/download/",["api.github.com","github.com","release-assets.githubusercontent.com","objects.githubusercontent.com"]),
-        new("gitee","https://gitee.com/api/v5/repos/altalatic/lantern-releases/releases?per_page=30",
+        new("gitee",new("https://gitee.com/api/v5/repos/altalatic/lantern-releases/releases"),
             "https://gitee.com/altalatic/lantern-releases/releases/download/",["gitee.com","foruda.gitee.com"])
     ];
     private static readonly JsonSerializerOptions Json=new(JsonSerializerDefaults.Web){MaxDepth=20};
@@ -79,15 +83,10 @@ public sealed class ServerUpdateClient : IDisposable
         var ct=deadline.Token;
         try
         {
-            var data=await ReadAsync(mirror,new Uri(mirror.Catalog),2*1024*1024,ct);
-            var releases=JsonSerializer.Deserialize<RemoteRelease[]>(data,Json)??throw new InvalidDataException("服务器发行列表无效");
-            var ranked=new List<(Version Version,RemoteRelease Release)>();
-            foreach(var item in releases)
-                if(!item.Draft&&item.Prerelease==(channel=="beta")&&item.TagName is {Length:>1} tag&&tag[0]=='v'&&TryVersion(tag[1..],out var version))
-                    ranked.Add((version,item));
-            if(ranked.Count==0)return new(mirror.Id,"empty");
-            var (latest,release)=ranked.OrderByDescending(item=>item.Version).First();
-            if(latest<=installed)return new(mirror.Id,"current");
+            var (candidate,complete)=await FindCandidateAsync(mirror,channel,installed,ct);
+            if(candidate is not { } match || match.Version<=installed)
+                return new(mirror.Id,!complete?"limited":candidate is null?"empty":"current");
+            var (latest,release)=match;
 
             string notes=release.Body??"";
             int? versionCode=platform=="Android"?ParseAndroidVersionCode(notes):null;
@@ -110,6 +109,26 @@ public sealed class ServerUpdateClient : IDisposable
         catch(OperationCanceledException) when(!token.IsCancellationRequested){return new(mirror.Id,"timeout");}
         catch(HttpRequestException){return new(mirror.Id,"unavailable");}
         catch(Exception ex) when(ex is IOException or InvalidDataException or JsonException or CryptographicException){return new(mirror.Id,"invalid");}
+    }
+
+    private async Task<((Version Version,RemoteRelease Release)? Candidate,bool Complete)> FindCandidateAsync(
+        Mirror mirror,string channel,Version installed,CancellationToken token)
+    {
+        (Version Version,RemoteRelease Release)? best=null;
+        bool prerelease=channel=="beta";
+        for(int page=1;page<=CatalogPageLimit;page++)
+        {
+            var data=await ReadAsync(mirror,mirror.CatalogPage(page),2*1024*1024,token);
+            var releases=JsonSerializer.Deserialize<RemoteRelease[]>(data,Json)??throw new InvalidDataException("服务器发行列表无效");
+            foreach(var item in releases)
+            {
+                if(item.Draft||item.Prerelease!=prerelease||item.TagName is not {Length:>1} tag||tag[0]!='v'||!TryVersion(tag[1..],out var version))continue;
+                if(best is null||version>best.Value.Version)best=(version,item);
+            }
+            if(releases.Length<CatalogPageSize)return (best,true);
+            if(best is { } match&&match.Version>installed)return (best,false);
+        }
+        return (best,false);
     }
 
     private static int ParseAndroidVersionCode(string notes)
@@ -223,7 +242,8 @@ public sealed class ServerUpdateClient : IDisposable
             try
             {
                 using var request=new HttpRequestMessage(method,url);
-                if(url.AbsoluteUri==mirror.Catalog)request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                if(url.Host==mirror.Catalog.Host&&url.AbsolutePath==mirror.Catalog.AbsolutePath)
+                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token);
                 bool retry=attempt==0&&response.Headers.RetryAfter is null&&response.StatusCode is
                     HttpStatusCode.RequestTimeout or HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout;

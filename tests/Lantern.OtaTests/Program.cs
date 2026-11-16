@@ -112,6 +112,32 @@ Assert(Ok(await Cmd(desktop,check)),"Windows checks public servers with no mobil
 await Cmd(desktop,download);
 await WaitPhase(desktop,"ready");
 Assert(Ok(await Cmd(desktop,install))&&windows.OpenedFolders==1&&windows.Installs==0,"Windows just opens the verified ZIP's folder");
+var pagedFeed=new FakeServers{LeadingBetaPages=4};
+var pagedHost=new Host("Windows",Path.Combine(root,"Paged"));
+await using(var paged=new AppController(pagedHost,new ServerUpdateClient(pagedFeed)))
+{
+    await paged.InitializeAsync(0);
+    foreach(string source in new[]{"gitee","github"})
+    {
+        Assert(Ok(await Cmd(paged,new{type="ota-options",channel="stable",source})),"Choose a single source for stable update coverage");
+        pagedFeed.LeadingBetaPages=4;
+        pagedFeed.Requests.Clear();
+        Assert(!Ok(await Cmd(paged,check)),"Exhausting the bounded catalog is reported as an incomplete check");
+        Assert((await Update(paged)).GetProperty("sources")[0].GetProperty("status").GetString()=="limited","No false claim of current or empty after four full pages");
+        Assert(pagedFeed.Requests.Count==4&&pagedFeed.Requests.All(uri=>uri.Contains("/releases?per_page=30&page=")),"A check reads at most four catalog pages and no package");
+        pagedFeed.LeadingBetaPages=1;
+        pagedFeed.Requests.Clear();
+        Assert(Ok(await Cmd(paged,check)),"Stable release is found on page two behind a full page of betas");
+        var stable=(await Update(paged)).GetProperty("release");
+        Assert(stable.GetProperty("channel").GetString()=="stable"&&stable.GetProperty("source").GetString()==source,"The correct stable channel and source are retained");
+        var catalogRequests=pagedFeed.Requests.Where(uri=>uri.Contains("/releases?",StringComparison.Ordinal)).ToArray();
+        Assert(catalogRequests.Length==2&&catalogRequests[1].Contains("&page=2",StringComparison.Ordinal),"Pagination ends when a newer release is found");
+        if(source=="gitee")Assert(catalogRequests.All(uri=>uri.EndsWith("&direction=desc",StringComparison.Ordinal)),"Gitee requests newest releases first explicitly");
+    }
+    Assert(Ok(await Cmd(paged,new{type="ota-options",channel="beta",source="gitee"})),"Beta remains independently selectable");
+    pagedFeed.Requests.Clear();
+    Assert(Ok(await Cmd(paged,check))&&pagedFeed.Requests.Count(uri=>uri.Contains("/releases?",StringComparison.Ordinal))==1,"A newer beta needs only the first page");
+}
 var reducer=new TaskbarProgressReducer();TransferNotificationSnapshot Snapshot(params TransferNotificationTask[] t)=>new(false,false,false,t);
 var active=new TransferNotificationTask("one","transferring","send",100,25,0);var second=active with{Id="two",Total=300,Completed=75};
 Assert(reducer.Update(Snapshot(active,second),true,0)==new TaskbarFrame(TaskbarState.Normal,2500,10000),"Weighted multiple tasks, independent of notifications switch");
@@ -121,7 +147,7 @@ Assert(reducer.Update(Snapshot(active with{State="failed"}),true,3).State==Taskb
 Assert(reducer.Update(Snapshot(active with{State="failed"}),true,5004).State==TaskbarState.None,"Error clears after timeout");
 Assert(reducer.Update(Snapshot(active),false,5005).State==TaskbarState.None,"Opt out clears");
 Assert(reducer.Update(Snapshot(active with{State="completed"}),true,5006).State==TaskbarState.None,"Completion clears");
-Console.WriteLine("PASS server OTA: channels, automatic fallback, manual provider, HTTPS origin, checksum conflict, bad bytes, signature rejection, Android rollback and permission, restart/cache, and manual Windows ZIP installation.");
+Console.WriteLine("PASS server OTA: channels, bounded catalog paging and newest-first Gitee, automatic fallback, manual provider, HTTPS origin, checksum conflict, bad bytes, signature rejection, Android rollback and permission, restart/cache, and manual Windows ZIP installation.");
 
 sealed class Host(string platform,string directory):IPlatformHost
 {
@@ -162,7 +188,7 @@ sealed class FakeServers : HttpMessageHandler
     private static readonly byte[] Payload=[1,3,3,7];
     private static readonly string Checksum=Convert.ToHexString(SHA256.HashData(Payload)).ToLowerInvariant();
     public bool FailGitHub,FailGitee,BadPayload,ConflictingHashes,LowAndroidCode,ExternalRedirect,OversizedCatalog;
-    public int GitHubServiceFailures,GitHubTransportFailures;
+    public int GitHubServiceFailures,GitHubTransportFailures,LeadingBetaPages;
     public System.Collections.Concurrent.ConcurrentQueue<string> Requests {get;}=new();
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)
@@ -197,6 +223,17 @@ sealed class FakeServers : HttpMessageHandler
                 assets=new[]{"Lantern-Android.apk","Lantern-Windows.zip","SHA256SUMS.txt"}
                     .Select(asset=>new{name=asset,browser_download_url=releases+tag+"/"+asset,size=github?Payload.Length:(int?)null})
             };
+            if(LeadingBetaPages>0)
+            {
+                var query=url.Query.TrimStart('?').Split('&');
+                string? pageValue=query.FirstOrDefault(part=>part.StartsWith("page=",StringComparison.Ordinal));
+                if(pageValue is null||!int.TryParse(pageValue[5..],out int page)||!query.Contains("per_page=30")||(!github&&!query.Contains("direction=desc")))
+                    return Reply(HttpStatusCode.BadRequest);
+                string Tag(int increment)=>"v"+new Version(CurrentVersion.Major,CurrentVersion.Minor,CurrentVersion.Build+increment);
+                var rows=page<=LeadingBetaPages?Enumerable.Range(2+30*(LeadingBetaPages-page),30).Reverse().Select(increment=>Entry(Tag(increment),true)):
+                    new[]{Entry(Tag(1),false)};
+                return Reply(HttpStatusCode.OK,new StringContent(JsonSerializer.Serialize(rows)));
+            }
             return Reply(HttpStatusCode.OK,new StringContent(JsonSerializer.Serialize(new[]{Entry("v"+CurrentVersion,false),Entry("v"+NextVersion,true)})));
         }
         if(ExternalRedirect)
