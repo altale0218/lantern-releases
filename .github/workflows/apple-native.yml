@@ -19,7 +19,7 @@ jobs:
           - os: macos-26-intel
             rid: iossimulator-x64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       DOTNET_NOLOGO: '1'
@@ -33,6 +33,15 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.401'
+      - name: Create and start a fresh iPhone simulator
+        if: ${{ matrix.rid == 'iossimulator-x64' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime="$(xcrun simctl list runtimes --json | python3 -c 'import json,sys; runtimes=[r for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and r["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]; print(max(runtimes,key=lambda r:tuple(map(int,r["version"].split("."))))["identifier"])')"
+          device="$(xcrun simctl create Lantern-CI com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro "$runtime")"
+          echo "LANTERN_SIMULATOR=$device" >> "$GITHUB_ENV"
+          xcrun simctl boot "$device"
       - name: Build the iPhone and iPad simulator app
         shell: bash
         run: |
@@ -57,27 +66,27 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :NSBonjourServices' "$bundle/Info.plist"
       - name: Launch the app in an iPhone simulator
         if: ${{ matrix.rid == 'iossimulator-x64' }}
-        timeout-minutes: 8
+        timeout-minutes: 14
         shell: bash
         run: |
           set -euo pipefail
           app="$(find src/Lantern.iOS/bin/Debug -type d -name '*.app' -print -quit)"
           app_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
-          device="$(xcrun simctl list -j devices available | python3 -c 'import json,sys; groups=json.load(sys.stdin)["devices"]; print(next((d["udid"] for name,ds in reversed(groups.items()) if "iOS-" in name for d in ds if d.get("isAvailable") and d["name"].startswith("iPhone")), ""))')"
-          if [ -z "$device" ]; then
-            xcrun simctl list runtimes
-            echo "No available iPhone simulator is installed on this runner"
+          device="${LANTERN_SIMULATOR:?the simulator was not created}"
+          trap 'xcrun simctl shutdown "$device" >/dev/null 2>&1 || true' EXIT
+          if ! xcrun simctl bootstatus "$device" > "$RUNNER_TEMP/lantern-ios-boot.log" 2>&1; then
+            tail -n 35 "$RUNNER_TEMP/lantern-ios-boot.log"
             exit 1
           fi
-          trap 'xcrun simctl shutdown "$device" >/dev/null 2>&1 || true' EXIT
-          xcrun simctl bootstatus "$device" -b
           xcrun simctl install "$device" "$app"
-          xcrun simctl launch --terminate-running-process "$device" "$app_id" | tee "$RUNNER_TEMP/lantern-ios-launch.log"
+          xcrun simctl launch --terminate-running-process --stdout "$RUNNER_TEMP/lantern-app-out.log" \
+            --stderr "$RUNNER_TEMP/lantern-app-error.log" "$device" "$app_id" | tee "$RUNNER_TEMP/lantern-ios-launch.log"
           pid="$(awk 'END {print $NF}' "$RUNNER_TEMP/lantern-ios-launch.log")"
           [[ "$pid" =~ ^[0-9]+$ ]]
           sleep 10
           if ! kill -0 "$pid" 2>/dev/null; then
             echo "iPhone simulator app exited early; collecting only relevant failure details"
+            grep -Eh 'Unhandled|Exception|Error|Abort|Fatal|^   at ' "$RUNNER_TEMP/lantern-app-out.log" "$RUNNER_TEMP/lantern-app-error.log" | tail -n 25 || true
             executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")"
             xcrun simctl spawn "$device" log show --last 2m --style compact \
               --predicate "process == \"$executable\" OR eventMessage CONTAINS[c] \"$app_id\"" \
