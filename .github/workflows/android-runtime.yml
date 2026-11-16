@@ -92,10 +92,13 @@ jobs:
             if device logcat -b crash -d | grep -A 24 -F "Process: $PACKAGE"; then exit 1; fi
             echo "PASS Lantern $version started the native Android main activity on API 37"
           }
-          download 0.7.16 e40889627779bf30b7de71969a9b7ec55a438ea039d2f7d8cc83d6ffa2beed6a
-          device install --no-streaming "$RUNNER_TEMP/lantern-0.7.16.apk"
-          startup 49 0.7.16
           download 0.7.17 dc629ac6d1fd0db8cd87cf9d99626de74b0c197322637326188b2eda0d36b7b2
-          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.17.apk"
+          device install --no-streaming "$RUNNER_TEMP/lantern-0.7.17.apk"
           startup 50 0.7.17
+          download 0.7.19 a6204be106326311bd9d20c092defbfe0bb20f94e9557811b118246c8ce02b94
+          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.19.apk"
+          startup 52 0.7.19
+          download 0.7.21 27255805c785f3b703200a3a220ca4560624cce80cab6ea86083d8449c40c55a
+          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.21.apk"
+          startup 54 0.7.21
           echo "PASS same-signature upgrade preserved the application package"
