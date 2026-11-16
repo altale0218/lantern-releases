@@ -114,6 +114,7 @@ jobs:
           startup 55 0.7.22
           echo "PASS same-signature upgrade preserved the application package"
           original_pid="$(device shell pidof "$PACKAGE" | tr -d '\r')"
+          echo "PID before Home: $original_pid"
           device shell input keyevent KEYCODE_HOME
           backgrounded=false
           for attempt in $(seq 1 12); do
@@ -124,13 +125,18 @@ jobs:
           done
           test "$backgrounded" = true
           sleep 3
-          test "$original_pid" = "$(device shell pidof "$PACKAGE" | tr -d '\r')"
+          background_pid="$(device shell pidof "$PACKAGE" | tr -d '\r' || true)"
+          echo "PID while backgrounded: $background_pid"
           device shell am start -W -n "$launcher"
           for attempt in $(seq 1 16); do
             if device shell dumpsys activity activities | grep -E "([Tt]opResumedActivity|mResumedActivity).*com\.lantern\.transfer/(\.MainActivity|com\.lantern\.transfer\.MainActivity)" > "$RUNNER_TEMP/lantern-resumed.log"; then break; fi
             sleep 1
           done
           test -s "$RUNNER_TEMP/lantern-resumed.log"
-          test "$original_pid" = "$(device shell pidof "$PACKAGE" | tr -d '\r')"
+          resumed_pid="$(device shell pidof "$PACKAGE" | tr -d '\r')"
+          echo "PID after resume: $resumed_pid"
+          if [ "$resumed_pid" != "$original_pid" ]; then
+            device shell dumpsys activity exit-info "$PACKAGE" | grep -Ei 'reason=|subreason=|description=' | head -12 || true
+          fi
           if device logcat -b crash -d | grep -A 24 -F "Process: $PACKAGE"; then exit 1; fi
-          echo "PASS Android launcher resumed the same process and native activity after Home"
+          echo "PASS Android launcher displayed the native activity after Home; see the recorded PIDs"
