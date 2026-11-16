@@ -69,7 +69,10 @@ jobs:
             code=$1
             version=$2
             device shell dumpsys package "$PACKAGE" | grep -F "versionCode=$code " > "$RUNNER_TEMP/lantern-version.log"
-            device shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$PACKAGE"
+            launcher="$(device shell cmd package query-activities --components --user 0 -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$PACKAGE" | tr -d '\r' | grep -F "$PACKAGE/" | tail -n 1)"
+            test -n "$launcher"
+            echo "Selected launcher component: $launcher"
+            device shell am start -W -n "$launcher"
             for attempt in $(seq 1 20); do
               if device shell dumpsys activity activities | grep -E "([Tt]opResumedActivity|mResumedActivity).*com\.lantern\.transfer/.*MainActivity" > "$RUNNER_TEMP/lantern-activity.log"; then break; fi
               sleep 2
