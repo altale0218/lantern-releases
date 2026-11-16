@@ -6,6 +6,8 @@
  const compatible=(a,b)=>a.nodeType===b.nodeType&&a.nodeName===b.nodeName&&a.namespaceURI===b.namespaceURI;
  function update(current,next){
   if(current.nodeType!==1){if(current.nodeValue!==next.nodeValue)current.nodeValue=next.nodeValue;return}
+  // A stable record can keep its mounted subtree. Editable fields still need their live values reconciled.
+  if(current.nodeName==='ARTICLE'&&key(current)&&current.isEqualNode(next)&&!current.querySelector('input,select'))return;
   for(const attribute of [...current.attributes])if(!next.hasAttribute(attribute.name)&&
     !(attribute.name==='open'&&current.matches('details[data-motion-disclosure]')))current.removeAttribute(attribute.name);
   for(const attribute of next.attributes)if(current.getAttribute(attribute.name)!==attribute.value)current.setAttribute(attribute.name,attribute.value);

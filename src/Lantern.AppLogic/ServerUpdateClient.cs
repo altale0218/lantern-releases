@@ -33,6 +33,7 @@ internal sealed record ServerCheck(ServerRelease? Release,ServerProbe[] Sources)
 public sealed class ServerUpdateClient : IDisposable
 {
     private const int CatalogPageSize=30,CatalogPageLimit=4;
+    private const string ChecksumAsset="SHA256SUMS.txt";
     private record Mirror(string Id,Uri Catalog,Uri StaticCatalog,string Releases,string[] Hosts)
     {
         public Uri CatalogPage(int page) => new(Catalog,$"?per_page={CatalogPageSize}&page={page}"+(Id=="gitee"?"&direction=desc":""));
@@ -86,7 +87,8 @@ public sealed class ServerUpdateClient : IDisposable
         var ct=deadline.Token;
         try
         {
-            var (candidate,complete)=await ReadCatalogAsync(mirror,channel,installed,ct);
+            string name=platform=="Android"?"Lantern-Android.apk":"Lantern-Windows.zip";
+            var (candidate,complete)=await ReadCatalogAsync(mirror,channel,name,installed,ct);
             if(candidate is not { } match || match.Version<=installed)
                 return new(mirror.Id,!complete?"limited":candidate is null?"empty":"current");
             var (latest,release)=match;
@@ -96,9 +98,8 @@ public sealed class ServerUpdateClient : IDisposable
             if(platform=="Android"&&(installedCode is not >0||versionCode<=installedCode))
                 throw new InvalidDataException("服务器 Android 版本号不递增");
 
-            string name=platform=="Android"?"Lantern-Android.apk":"Lantern-Windows.zip";
             var package=FindAsset(mirror,release,name);
-            var checksum=FindAsset(mirror,release,"SHA256SUMS.txt");
+            var checksum=FindAsset(mirror,release,ChecksumAsset);
             var sum=ReadAsync(mirror,checksum,16*1024,ct);
             var asset=release.Assets!.Single(a=>a?.Name==name);
             var length=PackageLengthAsync(mirror,package,asset.Size,ct);
@@ -115,20 +116,20 @@ public sealed class ServerUpdateClient : IDisposable
         catch(Exception ex) when(ex is IOException or InvalidDataException or JsonException or CryptographicException){return new(mirror.Id,"invalid");}
     }
 
-    private async Task<CatalogResult> ReadCatalogAsync(Mirror mirror,string channel,Version installed,CancellationToken token)
+    private async Task<CatalogResult> ReadCatalogAsync(Mirror mirror,string channel,string packageName,Version installed,CancellationToken token)
     {
         CatalogResult primary;
-        try { primary=await FindCandidateAsync(mirror,channel,installed,token); }
+        try { primary=await FindCandidateAsync(mirror,channel,packageName,installed,token); }
         catch(HttpRequestException ex) when(ex.StatusCode is null or HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests or
             HttpStatusCode.RequestTimeout or HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout)
         {
-            if(await ReadStaticCatalogAsync(mirror,channel,token) is { } fallback)return fallback;
+            if(await ReadStaticCatalogAsync(mirror,channel,packageName,token) is { } fallback)return fallback;
             throw;
         }
         if(primary.Candidate is { } match&&match.Version>installed)return primary;
         try
         {
-            if(await ReadStaticCatalogAsync(mirror,channel,token) is not { } fallback)return primary;
+            if(await ReadStaticCatalogAsync(mirror,channel,packageName,token) is not { } fallback)return primary;
             var candidate=primary.Candidate;
             if(fallback.Candidate is { } newer&&(candidate is null||newer.Version>candidate.Value.Version))
                 candidate=newer;
@@ -140,7 +141,7 @@ public sealed class ServerUpdateClient : IDisposable
         }
     }
 
-    private async Task<CatalogResult?> ReadStaticCatalogAsync(Mirror mirror,string channel,CancellationToken token)
+    private async Task<CatalogResult?> ReadStaticCatalogAsync(Mirror mirror,string channel,string packageName,CancellationToken token)
     {
         var url=new Uri(mirror.StaticCatalog,channel+".json");
         byte[] data;
@@ -148,13 +149,13 @@ public sealed class ServerUpdateClient : IDisposable
         catch(HttpRequestException ex) when(ex.StatusCode==HttpStatusCode.NotFound){return null;}
         var releases=JsonSerializer.Deserialize<RemoteRelease[]>(data,Json);
         if(releases is null or {Length:>1})throw new InvalidDataException("备用更新清单无效");
-        var candidate=RankReleases(releases,channel=="beta");
+        var candidate=RankReleases(releases,channel=="beta",packageName);
         if(releases.Length==1&&candidate is null)throw new InvalidDataException("备用更新清单的频道或版本无效");
         return new(candidate,true);
     }
 
     private async Task<CatalogResult> FindCandidateAsync(
-        Mirror mirror,string channel,Version installed,CancellationToken token)
+        Mirror mirror,string channel,string packageName,Version installed,CancellationToken token)
     {
         (Version Version,RemoteRelease Release)? best=null;
         bool prerelease=channel=="beta";
@@ -162,19 +163,20 @@ public sealed class ServerUpdateClient : IDisposable
         {
             var data=await ReadAsync(mirror,mirror.CatalogPage(page),2*1024*1024,token);
             var releases=JsonSerializer.Deserialize<RemoteRelease[]>(data,Json)??throw new InvalidDataException("服务器发行列表无效");
-            if(RankReleases(releases,prerelease) is { } ranked&&(best is null||ranked.Version>best.Value.Version))best=ranked;
+            if(RankReleases(releases,prerelease,packageName) is { } ranked&&(best is null||ranked.Version>best.Value.Version))best=ranked;
             if(releases.Length<CatalogPageSize)return new(best,true);
             if(best is { } match&&match.Version>installed)return new(best,false);
         }
         return new(best,false);
     }
 
-    private static (Version Version,RemoteRelease Release)? RankReleases(RemoteRelease[] releases,bool prerelease)
+    private static (Version Version,RemoteRelease Release)? RankReleases(RemoteRelease[] releases,bool prerelease,string packageName)
     {
         (Version Version,RemoteRelease Release)? best=null;
         foreach(var item in releases)
         {
             if(item is null||item.Draft||item.Prerelease!=prerelease||item.TagName is not {Length:>1} tag||tag[0]!='v'||!TryVersion(tag[1..],out var version))continue;
+            if(item.Assets is not { } assets||!assets.Any(asset=>asset?.Name==packageName)||!assets.Any(asset=>asset?.Name==ChecksumAsset))continue;
             if(best is null||version>best.Value.Version)best=(version,item);
         }
         return best;

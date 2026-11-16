@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)][ValidateSet('stable','beta')][string]$Channel,
     [Parameter(Mandatory)][string]$PackagesDirectory,
     [Parameter(Mandatory)][string]$NotesFile,
-    [Parameter(Mandatory)][string]$Destination
+    [Parameter(Mandatory)][string]$Destination,
+    [ValidateNotNullOrEmpty()][ValidateSet('github','gitee')][string[]]$Sources=@('github','gitee')
 )
 $ErrorActionPreference='Stop'
 $packages=(Resolve-Path -LiteralPath $PackagesDirectory).Path
@@ -32,6 +33,7 @@ $origins=[ordered]@{
 $output=[IO.Path]::GetFullPath($Destination)
 $encoding=[Text.UTF8Encoding]::new($false)
 foreach($source in $origins.Keys){
+    if($source -notin $Sources){continue}
     $directory=(New-Item -ItemType Directory -Path (Join-Path $output $source) -Force).FullName
     $entry=[ordered]@{
         tag_name="v$Version"

@@ -197,6 +197,19 @@ async function checkSendConfirmation(p,platform){
  const outline=dialog.getByRole('combobox',{name:'跳到文档中的部分'});
  await outline.selectOption('2');
  check(await dialog.locator('.document-preview-content').evaluate(region=>region.scrollTop>0),platform+' multi-section previews navigate inside the reading area');
+ const initialZoom=await p.evaluate(()=>{
+  const zoom=document.documentElement.style.zoom;
+  document.documentElement.style.zoom='1.5';
+  document.querySelector('.document-preview-content').scrollTop=0;
+  return zoom;
+ });
+ await dialog.getByLabel('跳到文档中的部分').selectOption('1');
+ check(await dialog.locator('.document-preview-content').evaluate(region=>{
+  const section=region.children[1];
+  const offset=section.getBoundingClientRect().top-region.getBoundingClientRect().top;
+  return Math.abs(offset)<4&&section===document.activeElement;
+ }),platform+' enlarged document aligns the chosen section and moves keyboard focus');
+ await p.evaluate(zoom=>{document.documentElement.style.zoom=zoom},initialZoom);
  await dialog.locator('[data-action="close-selection-preview"]').click();
  await dialog.locator('.send-file-disclosure summary').click();
  check(await dialog.getByRole('checkbox').count()===8,platform+' unpaired targets are excluded');

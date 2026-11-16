@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.25";
-    public const int AndroidCode=58;
+    public const string Version="0.7.26";
+    public const int AndroidCode=59;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.25\n• 发行接口未发现新版时会再核对备用清单，减少列表缓存造成的漏报。\n• 更新中心在下载前显示一条更新要点，并可展开完整更新日志。";
+    public const string Notes="0.7.26\n• 聊天和任务刷新时复用未变化的卡片，长记录在后台状态变化时更流畅。\n• 文档预览阅读区增宽，界面放大后仍能准确跳到所选章节或工作表。\n• 更新检查跳过仅发布源码的条目，保留相同渠道内可安装的版本。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

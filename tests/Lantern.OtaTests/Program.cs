@@ -164,6 +164,15 @@ await using(var paged=new AppController(pagedHost,new ServerUpdateClient(pagedFe
     pagedFeed.PublishStaticCatalog=false;
     Assert(Ok(await Cmd(paged,check))&&(await Update(paged)).GetProperty("phase").GetString()=="current",
         "A missing static catalog leaves a complete and current primary listing usable");
+    pagedFeed.StaleReleaseApi=false;
+    pagedFeed.OnlySourceReleaseFirst=true;
+    pagedFeed.Requests.Clear();
+    Assert(Ok(await Cmd(paged,check))&&(await Update(paged)).GetProperty("phase").GetString()=="available",
+        "A release with only a source archive does not hide an installable release in the same channel");
+    var installed=Version.Parse(AppRelease.Version);
+    string sourceOnlyTag="v"+new Version(installed.Major,installed.Minor,installed.Build+2);
+    Assert(pagedFeed.Requests.All(uri=>!uri.Contains("/download/"+sourceOnlyTag+"/",StringComparison.Ordinal)),
+        "Source-only entries never trigger installation package requests");
 }
 var reducer=new TaskbarProgressReducer();TransferNotificationSnapshot Snapshot(params TransferNotificationTask[] t)=>new(false,false,false,t);
 var active=new TransferNotificationTask("one","transferring","send",100,25,0);var second=active with{Id="two",Total=300,Completed=75};
@@ -215,7 +224,7 @@ sealed class FakeServers : HttpMessageHandler
     private static readonly byte[] Payload=[1,3,3,7];
     private static readonly string Checksum=Convert.ToHexString(SHA256.HashData(Payload)).ToLowerInvariant();
     public bool FailGitHub,FailGitee,BadPayload,ConflictingHashes,LowAndroidCode,ExternalRedirect,OversizedCatalog;
-    public bool BlockReleaseApi,PublishStaticCatalog,StaticCatalogRedirect,StaleReleaseApi;
+    public bool BlockReleaseApi,PublishStaticCatalog,StaticCatalogRedirect,StaleReleaseApi,OnlySourceReleaseFirst;
     public int GitHubServiceFailures,GitHubTransportFailures,LeadingBetaPages;
     public System.Collections.Concurrent.ConcurrentQueue<string> Requests {get;}=new();
 
@@ -226,10 +235,10 @@ sealed class FakeServers : HttpMessageHandler
         Requests.Enqueue(url.AbsoluteUri);
         bool github=url.Host is "api.github.com" or "github.com" or "raw.githubusercontent.com";
         string releases=github?"https://github.com/altale0218/lantern-releases/releases/download/":"https://gitee.com/altalatic/lantern-releases/releases/download/";
-        object Entry(string tag,bool prerelease)=>new
+        object Entry(string tag,bool prerelease,bool withPackages=true)=>new
         {
             tag_name=tag,prerelease,draft=false,body="Fixture versionCode "+(LowAndroidCode?1:NextAndroidCode),
-            assets=new[]{"Lantern-Android.apk","Lantern-Windows.zip","SHA256SUMS.txt"}
+            assets=(withPackages?new[]{"Lantern-Android.apk","Lantern-Windows.zip","SHA256SUMS.txt"}:new[]{"Source.zip"})
                 .Select(asset=>new{name=asset,browser_download_url=releases+tag+"/"+asset,size=github?Payload.Length:(int?)null})
         };
         if(route.Contains("/lantern-update-catalog/",StringComparison.Ordinal))
@@ -249,6 +258,11 @@ sealed class FakeServers : HttpMessageHandler
         {
             if(BlockReleaseApi)return Reply(HttpStatusCode.Forbidden);
             if(StaleReleaseApi)return Reply(HttpStatusCode.OK,new StringContent(JsonSerializer.Serialize(new[]{Entry("v"+CurrentVersion,true)})));
+            if(OnlySourceReleaseFirst)
+            {
+                var metadataVersion=new Version(NextVersion.Major,NextVersion.Minor,NextVersion.Build+1);
+                return Reply(HttpStatusCode.OK,new StringContent(JsonSerializer.Serialize(new[]{Entry("v"+metadataVersion,true,false),Entry("v"+NextVersion,true)})));
+            }
             if(OversizedCatalog)
             {
                 var invalid=new ByteArrayContent(new byte[2*1024*1024+1]);
