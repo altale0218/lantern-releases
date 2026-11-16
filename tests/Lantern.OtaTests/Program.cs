@@ -91,6 +91,23 @@ var windows=new Host("Windows",Path.Combine(root,"Windows"));
 await using var desktop=new AppController(windows,new ServerUpdateClient(feed));
 await desktop.InitializeAsync(0);
 Assert(Ok(await Cmd(desktop,new{type="ota-options",channel="beta",source="github"})),"Manual GitHub selection works");
+int githubCatalogRequests() => feed.Requests.Count(uri=>uri.StartsWith("https://api.github.com/",StringComparison.Ordinal));
+int beforeRetry=githubCatalogRequests();
+feed.GitHubServiceFailures=1;
+Assert(Ok(await Cmd(desktop,check))&&githubCatalogRequests()==beforeRetry+2,"temporary 503 is retried exactly once and recovers");
+beforeRetry=githubCatalogRequests();
+feed.GitHubTransportFailures=1;
+Assert(Ok(await Cmd(desktop,check))&&githubCatalogRequests()==beforeRetry+2,"a dropped connection retries the same validated HTTPS endpoint");
+beforeRetry=githubCatalogRequests();
+feed.GitHubServiceFailures=2;
+Assert(!Ok(await Cmd(desktop,check))&&githubCatalogRequests()==beforeRetry+2,"consecutive transient failures stop after one retry");
+beforeRetry=githubCatalogRequests();
+feed.FailGitHub=true;
+Assert(!Ok(await Cmd(desktop,check))&&githubCatalogRequests()==beforeRetry+1,"a forbidden response is not retried");
+feed.FailGitHub=false;
+feed.OversizedCatalog=true;
+Assert(!Ok(await Cmd(desktop,check)),"the actual catalog length is bounded even with a short length header");
+feed.OversizedCatalog=false;
 Assert(Ok(await Cmd(desktop,check)),"Windows checks public servers with no mobile device");
 await Cmd(desktop,download);
 await WaitPhase(desktop,"ready");
@@ -144,7 +161,8 @@ sealed class FakeServers : HttpMessageHandler
     private static readonly Version NextVersion=new(CurrentVersion.Major,CurrentVersion.Minor,CurrentVersion.Build+1);
     private static readonly byte[] Payload=[1,3,3,7];
     private static readonly string Checksum=Convert.ToHexString(SHA256.HashData(Payload)).ToLowerInvariant();
-    public bool FailGitHub,FailGitee,BadPayload,ConflictingHashes,LowAndroidCode,ExternalRedirect;
+    public bool FailGitHub,FailGitee,BadPayload,ConflictingHashes,LowAndroidCode,ExternalRedirect,OversizedCatalog;
+    public int GitHubServiceFailures,GitHubTransportFailures;
     public System.Collections.Concurrent.ConcurrentQueue<string> Requests {get;}=new();
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)
@@ -156,6 +174,22 @@ sealed class FakeServers : HttpMessageHandler
         if(github?FailGitHub:FailGitee)return Reply(HttpStatusCode.Forbidden);
         if(route.EndsWith("/releases",StringComparison.Ordinal))
         {
+            if(OversizedCatalog)
+            {
+                var invalid=new ByteArrayContent(new byte[2*1024*1024+1]);
+                invalid.Headers.ContentLength=16;
+                return Reply(HttpStatusCode.OK,invalid);
+            }
+            if(github&&GitHubTransportFailures>0)
+            {
+                GitHubTransportFailures--;
+                throw new HttpRequestException(HttpRequestError.ResponseEnded,"The simulated connection ended early");
+            }
+            if(github&&GitHubServiceFailures>0)
+            {
+                GitHubServiceFailures--;
+                return Reply(HttpStatusCode.ServiceUnavailable);
+            }
             string releases=github?"https://github.com/altale0218/lantern-releases/releases/download/":"https://gitee.com/altalatic/lantern-releases/releases/download/";
             object Entry(string tag,bool prerelease)=>new
             {

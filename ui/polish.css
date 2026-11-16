@@ -28,7 +28,7 @@
 .send-emblem{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#b4e66e18;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 25%,var(--line))}
 .send-emblem svg{width:21px;height:21px}
 .release-send-card .eyebrow{font-size:calc(11px * var(--font-scale,1));letter-spacing:1.2px;color:var(--muted)}
-.transfer-privacy{display:flex;align-items:center;gap:5px;margin-left:auto;font-size:calc(11px * var(--font-scale,1));color:var(--muted)}
+.transfer-privacy{display:flex;align-items:center;gap:5px;margin-left:auto;font-size:calc(12px * var(--font-scale,1));color:var(--muted)}
 .transfer-privacy svg{width:13px;height:13px}
 .release-send-card h2{font-size:calc(25px * var(--font-scale,1));line-height:1.45;letter-spacing:-.4px;margin:22px 0 8px;max-width:100%}
 .release-send-card>p{font-size:calc(14px * var(--font-scale,1));max-width:100%;line-height:1.7;color:var(--muted)}
@@ -107,7 +107,7 @@
 .privacy-points p{font-size:calc(13px * var(--font-scale,1));color:var(--muted);line-height:1.8}
 .privacy-points b{color:var(--text);font-size:calc(14px * var(--font-scale,1))}
 .about-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
-.footer-link{font-size:inherit;color:var(--muted);padding:0;min-height:0;text-decoration:underline;text-underline-offset:3px}:where(:root:not([data-platform="Android"])) .footer-link:hover{background:none;color:var(--text)}
+.footer-link{font-size:calc(12px * var(--font-scale,1));color:var(--muted);padding:0;min-height:0;text-decoration:underline;text-underline-offset:3px}:where(:root:not([data-platform="Android"])) .footer-link:hover{background:none;color:var(--text)}
 .is-refreshing>svg{animation:release-refresh .7s linear infinite}
 @keyframes release-refresh{to{transform:rotate(360deg)}}
 @media(max-width:1100px){.first-connection{grid-template-columns:minmax(0,1fr)}.intro-grid{gap:14px}.release-send-card{padding:20px}}
@@ -279,6 +279,8 @@
  .send-modal-body{overflow:visible}
 }
 .footer-status{display:flex;justify-content:center;align-items:center;gap:10px 18px;flex-wrap:wrap;padding-top:16px;margin-top:22px;line-height:1.6;font-size:calc(12px * var(--font-scale,1))}
+.footer-security>span,.footer-detail>span{font-size:calc(12px * var(--font-scale,1))}
+.tasks-heading h2 span{font-size:calc(12px * var(--font-scale,1))}
 .footer-detail{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .mobile-nav{backdrop-filter:none}
 .mobile-nav-icon{position:relative;display:grid;place-items:center;line-height:1}
@@ -310,13 +312,12 @@
 :root[data-platform="Android"] .transfer-overview .stat{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:13px;min-width:0}
 :root[data-platform="Android"] .transfer-overview .stat-icon{display:none}
 :root[data-platform="Android"] .transfer-overview .stat-value{font-size:calc(25px * var(--font-scale,1));margin:4px 0}
-:root[data-platform="Android"] .transfer-overview .stat-trend{font-size:calc(11px * var(--font-scale,1));text-align:left}
+:root[data-platform="Android"] .transfer-overview .stat-trend{text-align:left}
 :root[data-platform="Android"] .task-toolbar{justify-content:flex-start;gap:8px}
 :root[data-platform="Android"] .chat-message-body{max-width:88%}
-:root[data-platform="Android"] .conversation-top time,:root[data-platform="Android"] .conversation-bottom small{font-size:calc(11px * var(--font-scale,1))}
 :root[data-platform="Android"] .settings-group h2{padding-top:2px;padding-bottom:12px}
 :root[data-platform="Android"] .brand-about h2{padding:0;border:0}
-:root[data-platform="Android"] .footer-status{font-size:calc(11px * var(--font-scale,1));gap:6px 12px;margin-top:18px}
+:root[data-platform="Android"] .footer-status{gap:6px 12px;margin-top:18px}
 @media(max-width:620px){.task-toolbar{justify-content:flex-start;width:100%}.task-toolbar .record-toolbar{flex:0 1 auto}.about-actions{justify-content:flex-start}.settings-group h2{padding-top:15px}.preferences-grid select{max-width:160px}.footer-detail{gap:8px}}
 
 .transfer-metrics{container:transfer-metrics / inline-size}

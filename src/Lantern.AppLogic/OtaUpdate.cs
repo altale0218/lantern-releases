@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.14";
-    public const int AndroidCode=47;
+    public const string Version="0.7.15";
+    public const int AndroidCode=48;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.14\n• 修复从测速进入更新中心后需要多次返回或卡在测速页的问题。\n• 在 iPhone 与 iPad 打开更新中心时，保留来源标签页，返回原来的设置或聊天。\n• iOS 项目匹配 Xcode 26.6 与相应 .NET 工作负载，补齐构建和模拟器验证说明。";
+    public const string Notes="0.7.15\n• 放大常用导航文字、传输状态和隐私链接，保持深浅主题和窄窗口的布局。\n• 更新源短时断连或暂不可用时安全重试一次，保留原有服务器、校验和签名规则。\n• 分段读取更新目录和摘要，减少正常检查时的临时内存分配。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

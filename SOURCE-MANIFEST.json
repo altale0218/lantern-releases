@@ -1,6 +1,6 @@
 {
   "kind": "reviewed-source-snapshot",
-  "version": "0.7.14",
+  "version": "0.7.15",
   "license": "MIT (prepared for maintainer review)",
   "includesGitHistory": false,
   "includesRuntimeData": false,
@@ -48,8 +48,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 9198,
-      "sha256": "f411267d73e010ad881ef5460abf974fe158d6d91b41fb4feffd04d52bc8b38c"
+      "bytes": 9512,
+      "sha256": "98c998d032bfe10010700414e39db4ae93aa7962da41d4e36940b56122144a0f"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -184,7 +184,7 @@
     {
       "path": "README.md",
       "bytes": 5699,
-      "sha256": "fdbe21ab410cf15989012b6c92b6853459e68cca449fb42c353793b1a76c675f"
+      "sha256": "c4f3a560aab235c89e9662a1b79f4315fe2e10c3be875801bf7a3997bc13fd13"
     },
     {
       "path": "SECURITY.md",
@@ -214,12 +214,12 @@
     {
       "path": "src/Lantern.Android/Lantern.Android.csproj",
       "bytes": 2125,
-      "sha256": "41c9ff50aba7f16783629c0861ee700190e8f6c5b25067192f2b2c0edeb9f224"
+      "sha256": "661ad8976a26c07514e26dc6449a107c6f856e29f3acce8b42daaeae64b37ee1"
     },
     {
       "path": "src/Lantern.Android/MainActivity.cs",
       "bytes": 19945,
-      "sha256": "408ce5d3449f01ff3c7069be1fdf92e143d1bba7731d099dc377500fdc9a27c4"
+      "sha256": "45ceecb98a47c868d297a39d1b109099985385fee6650d936ee2aaf92fe1ac60"
     },
     {
       "path": "src/Lantern.Android/Native/BrandSplashView.java",
@@ -229,7 +229,7 @@
     {
       "path": "src/Lantern.Android/Native/CrashCaptureApplication.java",
       "bytes": 2562,
-      "sha256": "9364cdd9d1230db6313bc6ad97f93e1dfea9e8f718ff4de1638c01fa4616f01a"
+      "sha256": "d2f4e049910144d7d8acc3b10b1735a945ef3b5223f561fa94ff398f9703e41a"
     },
     {
       "path": "src/Lantern.Android/Native/CrashJournal.java",
@@ -239,7 +239,7 @@
     {
       "path": "src/Lantern.Android/Native/StartupActivity.java",
       "bytes": 9143,
-      "sha256": "47fff92c788e8efc6b7df70917de2ac65bbffaf2e5daf3db7cf62d56bafff556"
+      "sha256": "79f8afe364f9d509c4e771c77f0393af8f990ab7dcfb0cbd5aaae4ca62d86232"
     },
     {
       "path": "src/Lantern.Android/Native/StartupManifestOverlay.xml",
@@ -343,8 +343,8 @@
     },
     {
       "path": "src/Lantern.AppLogic/OtaUpdate.cs",
-      "bytes": 12241,
-      "sha256": "007c9fc668bde43e66a85a3537d88f04d1036ef1390af675bda8757ea458d8ce"
+      "bytes": 12247,
+      "sha256": "2b021836d979edcc94c74a7fd6b3fd21d172dfe1703bac40563417ee8c69b971"
     },
     {
       "path": "src/Lantern.AppLogic/Pairing.cs",
@@ -358,8 +358,8 @@
     },
     {
       "path": "src/Lantern.AppLogic/ServerUpdateClient.cs",
-      "bytes": 12742,
-      "sha256": "843a91ba2828b6f1255a1e185c5d7af77f11feb21a3f9ba3a6417ab62e7b1ea0"
+      "bytes": 14283,
+      "sha256": "d8a3fe81c6b173da60f72affd45d33633fb1b89fd1ec635fc522d4c33ed2502c"
     },
     {
       "path": "src/Lantern.AppLogic/SpeedTest.cs",
@@ -454,7 +454,7 @@
     {
       "path": "src/Lantern.iOS/Lantern.iOS.csproj",
       "bytes": 1062,
-      "sha256": "42bb48d2d85922fac487bfcc5edecdcf03f3eb7199b897b95cda62c79e0368e4"
+      "sha256": "67b09f3db59f4f907e8d2fd49a20c41435be98ba87c0fffe4bf497f83da2f4b7"
     },
     {
       "path": "src/Lantern.iOS/LanternTabs.cs",
@@ -484,7 +484,7 @@
     {
       "path": "src/Lantern.Windows/Lantern.Windows.csproj",
       "bytes": 1529,
-      "sha256": "e152083bac1e5290b3ffe2f54a8192ae1ae673cbc98bc9b4d6da20b50e0a87a0"
+      "sha256": "e0a84172dfa47b0d0353e8c903c84c07dfa97f7d3be76bc34135026deddcbe64"
     },
     {
       "path": "src/Lantern.Windows/Program.cs",
@@ -588,8 +588,8 @@
     },
     {
       "path": "tests/Lantern.OtaTests/Program.cs",
-      "bytes": 11260,
-      "sha256": "921d011cf8b1a3fcf1dfc71937af32d9d14ab39591f8bbd07b3a1518377c5682"
+      "bytes": 13109,
+      "sha256": "d1afc8712d3a2786dccc78cdf5acb8c28ba17dfe82765e2c31f9da2fa19e8cad"
     },
     {
       "path": "tests/Lantern.PairingTests/Lantern.PairingTests.csproj",
@@ -738,8 +738,8 @@
     },
     {
       "path": "tests/ui/public-preview.cjs",
-      "bytes": 23330,
-      "sha256": "308ec422f6f6e69120b4e7591dd67b938ab2687602f3535198465fe1db767077"
+      "bytes": 23766,
+      "sha256": "2645d95943540402bd45ab935a93bb2172fe033a8803218332b60ca0c59ef34e"
     },
     {
       "path": "tests/ui/speed-test.cjs",
@@ -789,7 +789,7 @@
     {
       "path": "ui/app.js",
       "bytes": 132698,
-      "sha256": "83d828a8d99692311bd21e9bdf7668f5730f504b7cbc1e0233a3dd9d05d41adc"
+      "sha256": "4ec3b5a322aac27a32e0e018d986f299109f9ec87e4c5f4facc85e8212067f30"
     },
     {
       "path": "ui/coast.svg",
@@ -803,8 +803,8 @@
     },
     {
       "path": "ui/experience.css",
-      "bytes": 34861,
-      "sha256": "084c9239fbfa3da33ed1b5540c99a111db81dca8095f48633ca39c920d9ecbd2"
+      "bytes": 34883,
+      "sha256": "5955a436eb3b4e162f989227e76ef5f042a1baa91214759e5549bce1e30248e1"
     },
     {
       "path": "ui/icon.svg",
@@ -828,8 +828,8 @@
     },
     {
       "path": "ui/polish.css",
-      "bytes": 48338,
-      "sha256": "b1e6ad65b525ef15066e15550fead1a0b35b39873376932d0a6dee4fc9bc6b77"
+      "bytes": 48274,
+      "sha256": "4932fe0501521b315695b17481074289582276b249e7edc03e665fdee3af118f"
     },
     {
       "path": "ui/style.css",

@@ -173,6 +173,8 @@ async function checkTouch(p,label){
    for(const name of ['settings','progress','history','transfer']){
     await p.locator('button[data-page="'+name+'"]:visible').first().click();await route(p,name);await checkTouch(p,platform+' '+theme+' '+name);
     check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),platform+' '+theme+' '+name+' fits viewport');
+    const labels=await p.locator('.footer-link,.footer-security>span,.transfer-privacy,.mobile-nav button>span:not(.mobile-nav-icon),.transfer-overview .stat-trend').evaluateAll(nodes=>nodes.filter(node=>node.getClientRects().length).map(node=>parseFloat(getComputedStyle(node).fontSize)));
+    check(labels.length>0&&labels.every(size=>size>=11.99),platform+' '+theme+' '+name+' direct labels render at their readable default sizes');
    }
    await p.locator('[data-action="open-updates"]:visible').first().click();await route(p,'updates');await checkTouch(p,platform+' '+theme+' update center');
    await p.screenshot({path:path.join(output,platform.toLowerCase()+'-updates-'+theme+'.png'),fullPage:true});const text=await p.locator('.update-layout').innerText();

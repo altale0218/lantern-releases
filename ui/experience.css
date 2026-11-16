@@ -203,7 +203,7 @@ body{line-height:1.5}
 :root[data-platform="Android"] .mobile-nav{padding-top:5px;padding-bottom:calc(var(--safe-bottom) + 3px)}
 :root[data-platform="Android"] .mobile-nav button{min-height:50px;gap:3px}
 :root[data-platform="Android"] .mobile-nav button svg{width:21px;height:21px}
-:root[data-platform="Android"] .mobile-nav button span{font-size:calc(11px * var(--font-scale,1))}
+:root[data-platform="Android"] .mobile-nav button>span:not(.mobile-nav-icon){font-size:calc(12px * var(--font-scale,1))}
 :root[data-platform="Android"] .btn{min-height:42px}
 :root[data-platform="Android"] .setting b{font-size:calc(14px * var(--font-scale,1))}
 :root[data-platform="Android"] .setting small{font-size:calc(12px * var(--font-scale,1));line-height:1.7}
@@ -274,7 +274,7 @@ body{line-height:1.5}
 :root[data-platform="Android"] .transfer-overview .stat-title{font-size:calc(12px * var(--font-scale,1));line-height:1.55;overflow-wrap:anywhere}
 :root[data-platform="Android"] .transfer-overview .stat-value{display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;font-size:calc(23px * var(--font-scale,1));line-height:1.4;margin-top:4px;overflow-wrap:anywhere}
 :root[data-platform="Android"] .transfer-overview .stat-value small{font-size:calc(11px * var(--font-scale,1));margin:0;line-height:1.5}
-:root[data-platform="Android"] .transfer-overview .stat-trend{position:static;display:block;margin:0;font-size:calc(11px * var(--font-scale,1));line-height:1.55;overflow-wrap:anywhere}
+:root[data-platform="Android"] .transfer-overview .stat-trend{position:static;display:block;margin:0;font-size:calc(12px * var(--font-scale,1));line-height:1.55;overflow-wrap:anywhere}
 :root[data-platform="Android"] .transfer-summary-note{font-size:calc(11px * var(--font-scale,1));line-height:1.7;margin-bottom:14px}
 :root[data-platform="Android"] .footer-status{margin-top:16px;padding-top:10px;font-size:calc(11px * var(--font-scale,1))}
 :root[data-platform="Android"] .footer-detail{font-size:calc(10px * var(--font-scale,1))}

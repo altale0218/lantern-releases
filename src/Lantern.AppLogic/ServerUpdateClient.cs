@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -145,12 +146,24 @@ public sealed class ServerUpdateClient : IDisposable
     private async Task<byte[]> ReadAsync(Mirror mirror,Uri url,int max,CancellationToken token)
     {
         using var response=await RequestAsync(mirror,url,HttpMethod.Get,token);
-        if(response.Content.Headers.ContentLength>max)throw new InvalidDataException("更新服务器响应过大");
+        long? length=response.Content.Headers.ContentLength;
+        if(length>max)throw new InvalidDataException("更新服务器响应过大");
         await using var stream=await response.Content.ReadAsStreamAsync(token);
-        var buffer=new byte[max+1];
-        int count=await stream.ReadAtLeastAsync(buffer,buffer.Length,false,token);
-        if(count>max)throw new InvalidDataException("更新服务器响应过大");
-        return buffer[..count];
+        const int chunkSize=8192;
+        using var content=new MemoryStream((int)(length??Math.Min(max,chunkSize)));
+        var chunk=ArrayPool<byte>.Shared.Rent(chunkSize);
+        try
+        {
+            while(true)
+            {
+                int remaining=max-(int)content.Length;
+                int count=await stream.ReadAsync(chunk.AsMemory(0,Math.Min(chunkSize,remaining+1)),token);
+                if(count==0)return content.ToArray();
+                if(count>remaining)throw new InvalidDataException("更新服务器响应过大");
+                content.Write(chunk,0,count);
+            }
+        }
+        finally{ArrayPool<byte>.Shared.Return(chunk);}
     }
 
     internal async Task DownloadAsync(ServerRelease release,string path,Action<long> progress,CancellationToken token)
@@ -191,9 +204,7 @@ public sealed class ServerUpdateClient : IDisposable
         {
             if(url.Scheme!=Uri.UriSchemeHttps||!url.IsDefaultPort||url.UserInfo.Length!=0||!mirror.Hosts.Contains(url.IdnHost,StringComparer.OrdinalIgnoreCase))
                 throw new InvalidDataException("更新服务器跳转地址无效");
-            using var request=new HttpRequestMessage(method,url);
-            if(url.AbsoluteUri==mirror.Catalog)request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token);
+            var response=await SendWithRetryAsync(mirror,url,method,token);
             if(response.IsSuccessStatusCode)return response;
             var status=response.StatusCode;
             var location=response.Headers.Location;
@@ -203,6 +214,29 @@ public sealed class ServerUpdateClient : IDisposable
             url=new Uri(url,location);
         }
         throw new InvalidDataException("更新服务器重定向过多");
+    }
+
+    private async Task<HttpResponseMessage> SendWithRetryAsync(Mirror mirror,Uri url,HttpMethod method,CancellationToken token)
+    {
+        for(int attempt=0;;attempt++)
+        {
+            try
+            {
+                using var request=new HttpRequestMessage(method,url);
+                if(url.AbsoluteUri==mirror.Catalog)request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                var response=await http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token);
+                bool retry=attempt==0&&response.Headers.RetryAfter is null&&response.StatusCode is
+                    HttpStatusCode.RequestTimeout or HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout;
+                if(!retry)return response;
+                response.Dispose();
+            }
+            catch(HttpRequestException ex) when(attempt==0&&(ex.HttpRequestError is
+                HttpRequestError.ConnectionError or HttpRequestError.ResponseEnded or HttpRequestError.SecureConnectionError))
+            {
+                // The retry opens a fresh request with the same HTTPS and host checks.
+            }
+            await Task.Delay(TimeSpan.FromMilliseconds(200),token);
+        }
     }
 
     public void Dispose()=>http.Dispose();
