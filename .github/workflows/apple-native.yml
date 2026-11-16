@@ -1,6 +1,8 @@
 name: Apple simulator build
 
 on:
+  push:
+    branches: [lantern-ios-runtime-check]
   workflow_dispatch:
 
 permissions:
@@ -12,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-26
+          - os: macos-26-intel
             rid: iossimulator-arm64
           - os: macos-26-intel
             rid: iossimulator-x64
@@ -53,3 +55,26 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$bundle/Info.plist"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$bundle/Info.plist"
           /usr/libexec/PlistBuddy -c 'Print :NSBonjourServices' "$bundle/Info.plist"
+      - name: Launch the app in an iPhone simulator
+        if: ${{ matrix.rid == 'iossimulator-x64' }}
+        timeout-minutes: 8
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$(find src/Lantern.iOS/bin/Debug -type d -name '*.app' -print -quit)"
+          app_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
+          device="$(xcrun simctl list -j devices available | python3 -c 'import json,sys; groups=json.load(sys.stdin)["devices"]; print(next((d["udid"] for name,ds in reversed(groups.items()) if "iOS-" in name for d in ds if d.get("isAvailable") and d["name"].startswith("iPhone")), ""))')"
+          if [ -z "$device" ]; then
+            xcrun simctl list runtimes
+            echo "No available iPhone simulator is installed on this runner"
+            exit 1
+          fi
+          trap 'xcrun simctl shutdown "$device" >/dev/null 2>&1 || true' EXIT
+          xcrun simctl bootstatus "$device" -b
+          xcrun simctl install "$device" "$app"
+          xcrun simctl launch --terminate-running-process "$device" "$app_id" | tee "$RUNNER_TEMP/lantern-ios-launch.log"
+          pid="$(awk 'END {print $NF}' "$RUNNER_TEMP/lantern-ios-launch.log")"
+          [[ "$pid" =~ ^[0-9]+$ ]]
+          sleep 10
+          kill -0 "$pid"
+          echo "PASS iPhone simulator launch completed, and the process is still running"
