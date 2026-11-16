@@ -25,7 +25,7 @@ foreach($dir in $owned){
         $expected.Add($relative,$item.FullName)
     }
 }
-foreach($file in @('global.json','Directory.Build.props','THIRD_PARTY_NOTICES.md','tools/Update-Windows.ps1','tools/Sync-PublicSource.ps1','tools/Check-ReleasePrivacy.ps1')){$expected.Add($file,(Join-Path $sourceRoot $file))}
+foreach($file in @('global.json','Directory.Build.props','THIRD_PARTY_NOTICES.md','tools/Update-Windows.ps1','tools/Sync-PublicSource.ps1','tools/Check-ReleasePrivacy.ps1','tools/New-ServerCatalog.ps1')){$expected.Add($file,(Join-Path $sourceRoot $file))}
 $changes=[Collections.Generic.List[string]]::new()
 foreach($dir in $owned){
     foreach($item in Get-ChildItem -LiteralPath (Join-Path $publicRoot $dir) -Recurse -File -Force){

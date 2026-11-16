@@ -124,7 +124,7 @@ await using(var paged=new AppController(pagedHost,new ServerUpdateClient(pagedFe
         pagedFeed.Requests.Clear();
         Assert(!Ok(await Cmd(paged,check)),"Exhausting the bounded catalog is reported as an incomplete check");
         Assert((await Update(paged)).GetProperty("sources")[0].GetProperty("status").GetString()=="limited","No false claim of current or empty after four full pages");
-        Assert(pagedFeed.Requests.Count==4&&pagedFeed.Requests.All(uri=>uri.Contains("/releases?per_page=30&page=")),"A check reads at most four catalog pages and no package");
+        Assert(pagedFeed.Requests.Count(uri=>uri.Contains("/releases?per_page=30&page="))==4&&pagedFeed.Requests.All(uri=>!uri.Contains("/download/")),"A check reads at most four catalog pages and no package");
         pagedFeed.LeadingBetaPages=1;
         pagedFeed.Requests.Clear();
         Assert(Ok(await Cmd(paged,check)),"Stable release is found on page two behind a full page of betas");
@@ -137,6 +137,19 @@ await using(var paged=new AppController(pagedHost,new ServerUpdateClient(pagedFe
     Assert(Ok(await Cmd(paged,new{type="ota-options",channel="beta",source="gitee"})),"Beta remains independently selectable");
     pagedFeed.Requests.Clear();
     Assert(Ok(await Cmd(paged,check))&&pagedFeed.Requests.Count(uri=>uri.Contains("/releases?",StringComparison.Ordinal))==1,"A newer beta needs only the first page");
+    pagedFeed.BlockReleaseApi=true;
+    pagedFeed.PublishStaticCatalog=true;
+    pagedFeed.Requests.Clear();
+    Assert(Ok(await Cmd(paged,check))&&(await Update(paged)).GetProperty("phase").GetString()=="available","Gitee reads the published catalog when the API is rate limited");
+    Assert(pagedFeed.Requests.Any(uri=>uri.EndsWith("/lantern-update-catalog/gitee/beta.json",StringComparison.Ordinal)),"Fallback uses the fixed Gitee channel path");
+    Assert(Ok(await Cmd(paged,new{type="ota-options",channel="beta",source="github"})),"Select GitHub fallback");
+    Assert(Ok(await Cmd(paged,check))&&(await Update(paged)).GetProperty("release").GetProperty("source").GetString()=="github","GitHub fallback retains the chosen source and checks the package checksum");
+    pagedFeed.StaticCatalogRedirect=true;
+    pagedFeed.Requests.Clear();
+    Assert(!Ok(await Cmd(paged,check))&&pagedFeed.Requests.All(uri=>!uri.Contains("different-project",StringComparison.Ordinal)),"A static catalog never follows a redirect");
+    pagedFeed.StaticCatalogRedirect=false;
+    Assert(Ok(await Cmd(paged,new{type="ota-options",channel="stable",source="github"})),"Select independently published stable catalog");
+    Assert(Ok(await Cmd(paged,check))&&(await Update(paged)).GetProperty("phase").GetString()=="idle","An empty stable catalog never exposes a beta release");
 }
 var reducer=new TaskbarProgressReducer();TransferNotificationSnapshot Snapshot(params TransferNotificationTask[] t)=>new(false,false,false,t);
 var active=new TransferNotificationTask("one","transferring","send",100,25,0);var second=active with{Id="two",Total=300,Completed=75};
@@ -147,7 +160,7 @@ Assert(reducer.Update(Snapshot(active with{State="failed"}),true,3).State==Taskb
 Assert(reducer.Update(Snapshot(active with{State="failed"}),true,5004).State==TaskbarState.None,"Error clears after timeout");
 Assert(reducer.Update(Snapshot(active),false,5005).State==TaskbarState.None,"Opt out clears");
 Assert(reducer.Update(Snapshot(active with{State="completed"}),true,5006).State==TaskbarState.None,"Completion clears");
-Console.WriteLine("PASS server OTA: channels, bounded catalog paging and newest-first Gitee, automatic fallback, manual provider, HTTPS origin, checksum conflict, bad bytes, signature rejection, Android rollback and permission, restart/cache, and manual Windows ZIP installation.");
+Console.WriteLine("PASS server OTA: channels, bounded catalog paging, newest-first Gitee, static catalog during API limits, automatic fallback, manual provider, HTTPS origin, checksum conflict, bad bytes, signature rejection, Android rollback and permission, restart/cache, and manual Windows ZIP installation.");
 
 sealed class Host(string platform,string directory):IPlatformHost
 {
@@ -188,6 +201,7 @@ sealed class FakeServers : HttpMessageHandler
     private static readonly byte[] Payload=[1,3,3,7];
     private static readonly string Checksum=Convert.ToHexString(SHA256.HashData(Payload)).ToLowerInvariant();
     public bool FailGitHub,FailGitee,BadPayload,ConflictingHashes,LowAndroidCode,ExternalRedirect,OversizedCatalog;
+    public bool BlockReleaseApi,PublishStaticCatalog,StaticCatalogRedirect;
     public int GitHubServiceFailures,GitHubTransportFailures,LeadingBetaPages;
     public System.Collections.Concurrent.ConcurrentQueue<string> Requests {get;}=new();
 
@@ -196,10 +210,30 @@ sealed class FakeServers : HttpMessageHandler
         var url=request.RequestUri!;
         string route=url.AbsolutePath;
         Requests.Enqueue(url.AbsoluteUri);
-        bool github=url.Host.EndsWith("github.com",StringComparison.Ordinal);
+        bool github=url.Host is "api.github.com" or "github.com" or "raw.githubusercontent.com";
+        string releases=github?"https://github.com/altale0218/lantern-releases/releases/download/":"https://gitee.com/altalatic/lantern-releases/releases/download/";
+        object Entry(string tag,bool prerelease)=>new
+        {
+            tag_name=tag,prerelease,draft=false,body="Fixture versionCode "+(LowAndroidCode?1:NextAndroidCode),
+            assets=new[]{"Lantern-Android.apk","Lantern-Windows.zip","SHA256SUMS.txt"}
+                .Select(asset=>new{name=asset,browser_download_url=releases+tag+"/"+asset,size=github?Payload.Length:(int?)null})
+        };
+        if(route.Contains("/lantern-update-catalog/",StringComparison.Ordinal))
+        {
+            if(!PublishStaticCatalog)return Reply(HttpStatusCode.NotFound);
+            if(StaticCatalogRedirect)
+            {
+                var redirect=new HttpResponseMessage(HttpStatusCode.Redirect);
+                redirect.Headers.Location=new Uri(url,"/different-project/beta.json");
+                return Task.FromResult(redirect);
+            }
+            return Reply(HttpStatusCode.OK,new StringContent(route.EndsWith("/stable.json",StringComparison.Ordinal)?"[]":
+                JsonSerializer.Serialize(new[]{Entry("v"+NextVersion,true)})));
+        }
         if(github?FailGitHub:FailGitee)return Reply(HttpStatusCode.Forbidden);
         if(route.EndsWith("/releases",StringComparison.Ordinal))
         {
+            if(BlockReleaseApi)return Reply(HttpStatusCode.Forbidden);
             if(OversizedCatalog)
             {
                 var invalid=new ByteArrayContent(new byte[2*1024*1024+1]);
@@ -216,13 +250,6 @@ sealed class FakeServers : HttpMessageHandler
                 GitHubServiceFailures--;
                 return Reply(HttpStatusCode.ServiceUnavailable);
             }
-            string releases=github?"https://github.com/altale0218/lantern-releases/releases/download/":"https://gitee.com/altalatic/lantern-releases/releases/download/";
-            object Entry(string tag,bool prerelease)=>new
-            {
-                tag_name=tag,prerelease,draft=false,body="Fixture versionCode "+(LowAndroidCode?1:NextAndroidCode),
-                assets=new[]{"Lantern-Android.apk","Lantern-Windows.zip","SHA256SUMS.txt"}
-                    .Select(asset=>new{name=asset,browser_download_url=releases+tag+"/"+asset,size=github?Payload.Length:(int?)null})
-            };
             if(LeadingBetaPages>0)
             {
                 var query=url.Query.TrimStart('?').Split('&');

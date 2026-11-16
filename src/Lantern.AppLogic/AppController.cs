@@ -71,6 +71,7 @@ public sealed class UiTask
     public string? Message { get; set; }
     public string? Folder { get; set; }
     public List<UiFile> Files { get; set; } = [];
+    internal UiFile? ProgressFile { get; set; }
 }
 public sealed class AppSettings
 {
@@ -478,6 +479,7 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
         lock (taskGate)
         {
             task.Files = offer.Files.Select((f,i) => new UiFile { Id = f.Id, Name = f.Name, Mime = f.Mime, Size = f.Size, Preview = sources?[i].Preview, LocalPath=sources?[i].LocalPath }).ToList();
+            task.ProgressFile = null;
         }
     }
     private void Progress(UiTask task, TransferProgress p)
@@ -487,8 +489,12 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
             task.Completed = p.Completed; task.Total = p.Total;
             bool paused = controls.TryGetValue(task.Id, out var c) && c.Control.IsPaused;
             task.State = paused && p.State == "transferring" ? "paused" : p.State; task.Speed = paused ? 0 : p.BytesPerSecond;
-            var current = task.Files.FirstOrDefault(f => f.Id == p.FileId);
-            if (current is not null) current.Completed = p.FileCompleted;
+            if (p.FileId.Length > 0)
+            {
+                if (task.ProgressFile?.Id != p.FileId)
+                    task.ProgressFile = task.Files.Find(f => f.Id == p.FileId);
+                if (task.ProgressFile is { } current) current.Completed = p.FileCompleted;
+            }
             if (p.State == "completed") foreach (var file in task.Files) file.Completed = file.Size;
         }
     }
@@ -543,8 +549,19 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
                 if(task is null)return;
                 task.State="saving";task.Speed=0;
                 // Previews are generated while verified files remain in the private staging directory.
-                if(settings.Thumbnails)foreach(var file in task.Files)
-                {string? path=Directory.GetFiles(staging,file.Id[..8]+"-*").FirstOrDefault();if(path is not null)file.Preview=await host.ThumbnailAsync(path,file.Mime);}
+                if(settings.Thumbnails)
+                {
+                    var media = task.Files.Where(file => file.Mime.StartsWith("image/", StringComparison.Ordinal) ||
+                        file.Mime.StartsWith("video/", StringComparison.Ordinal));
+                    await Parallel.ForEachAsync(media, new ParallelOptions { MaxDegreeOfParallelism = 2, CancellationToken = token }, async (file, _) =>
+                    {
+                        // The transfer layer created this exact file after validating its name and digest.
+                        string path = Path.Combine(staging, file.Id[..8] + "-" + file.Name);
+                        try { file.Preview = await host.ThumbnailAsync(path, file.Mime); }
+                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                        { System.Diagnostics.Debug.WriteLine("Optional transfer thumbnail unavailable: " + ex.GetType().Name); }
+                    });
+                }
                 task.Folder=await host.PublishReceivedAsync(staging,token);
             },connection.FirstMessage);
             if (task is not null)
@@ -565,10 +582,16 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
     public TransferNotificationSnapshot GetTransferNotificationSnapshot()
     {
         lock(taskGate)
-            return new(settings.TransferNotifications, settings.XiaomiIsland, settings.Notifications,
-                tasks.Values.Where(t=>t.Kind!="text"&&sessionTasks.ContainsKey(t.Id)).Select(t=>new TransferNotificationTask(
-                    t.Id,t.State,t.Direction,t.Total,t.Completed,t.Speed,
-                    settings.NotificationDetails?t.Name:null)).ToArray());
+        {
+            var activeSession = new List<TransferNotificationTask>();
+            foreach (var entry in sessionTasks)
+            {
+                if (tasks.TryGetValue(entry.Key, out var task) && task.Kind != "text")
+                    activeSession.Add(new(task.Id, task.State, task.Direction, task.Total, task.Completed, task.Speed,
+                        settings.NotificationDetails ? task.Name : null));
+            }
+            return new(settings.TransferNotifications, settings.XiaomiIsland, settings.Notifications, activeSession.ToArray());
+        }
     }
     private static string ResolveLocalFile(UiTask task,UiFile file)
     {

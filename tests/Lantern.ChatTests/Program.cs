@@ -131,6 +131,35 @@ try
         var reverse=(await Records(a)).Single(t=>t.GetProperty("kind").GetString()=="files"&&t.GetProperty("direction").GetString()=="receive");
         Assert(reverse.GetProperty("state").GetString()=="completed"&&File.ReadAllBytes(Directory.GetFiles(reverse.GetProperty("folder").GetString()!).Single()).SequenceEqual(image),"simulated iPhone sends the exact verified file bytes back to the other platform");
     }
+    var batch=new (string Name,string Mime,byte[] Data)[]{
+        ("虚构照片.png","image/png",image),
+        ("虚构照片.png","image/png",[..image,0]),
+        ("没有缩略图.png","image/png",image),
+        ("虚构文档.txt","text/plain",Encoding.UTF8.GetBytes("仅用于测试的文档")),
+        ("空文件.txt","text/plain",[])
+    };
+    Service(a).Nearby[bid]=new(b.LocalIdentity,"127.0.0.1",Service(b).Port,DateTimeOffset.UtcNow);
+    ah.Selection=batch.Select(item=>new PickedFile(new(item.Name,item.Data.Length,item.Mime,
+        ()=>Task.FromResult<Stream>(new MemoryStream(item.Data))),null)).ToArray();
+    bh.ThumbnailCalls.Clear();bh.ThumbnailFailureSuffix="没有缩略图.png";
+    Assert((await Cmd(a,new{type="pick"})).GetProperty("ok").GetBoolean(),"mixed batch selected");
+    var mixedResult=await Cmd(a,new{type="send",peerId=bid});
+    Assert(mixedResult.GetProperty("ok").GetBoolean(),"mixed batch queued to the authenticated receiver");
+    for(int i=0;i<250&&!(await Records(b)).Any(t=>t.GetProperty("files").GetArrayLength()==batch.Length&&t.GetProperty("state").GetString()=="completed");i++)await Task.Delay(30);
+    var mixed=(await Records(b)).Single(t=>t.GetProperty("files").GetArrayLength()==batch.Length);
+    Assert(mixed.GetProperty("state").GetString()=="completed","optional thumbnail failure leaves the verified batch intact");
+    var mixedFiles=mixed.GetProperty("files").EnumerateArray().ToArray();
+    var mixedFolder=mixed.GetProperty("folder").GetString()!;
+    for(int i=0;i<batch.Length;i++)
+    {
+        var item=batch[i];var record=mixedFiles[i];
+        var path=Path.Combine(mixedFolder,record.GetProperty("id").GetString()![..8]+"-"+item.Name);
+        Assert(File.ReadAllBytes(path).SequenceEqual(item.Data)&&record.GetProperty("completed").GetInt64()==item.Data.Length,"verified file bytes and per-file progress match item "+i);
+        if(i<2)Assert(record.GetProperty("preview").GetString()=="data:image/png;base64,"+Convert.ToBase64String(item.Data),"same-name images use their own verified file "+i);
+        else Assert(record.GetProperty("preview").ValueKind==JsonValueKind.Null,"optional or unsupported preview remains empty "+i);
+    }
+    Assert(bh.ThumbnailCalls.Count==3&&bh.ThumbnailCalls.All(call=>call.StartsWith("image/",StringComparison.Ordinal)),"only actual media goes through thumbnail generation");
+    Assert(bh.PeakThumbnails<=2,"receiver preview workers remain bounded");
 }
 finally{await a.DisposeAsync();await b.DisposeAsync();await c.DisposeAsync();}
 var migrationHost=new Host(Path.Combine(root,"Migration"),"Windows");Directory.CreateDirectory(migrationHost.DataDirectory);
@@ -147,9 +176,24 @@ sealed class Host(string directory,string platform):IPlatformHost
     public bool UseUdpDiscovery=>platform is not ("iOS" or "iPadOS");
     public string Platform=>platform;public string DeviceName=>"同名设备";public string DataDirectory=>directory;public ISecretStore Secrets{get;}=new MemorySecrets();
     public IReadOnlyList<PickedFile> Selection=[];
+    public readonly System.Collections.Concurrent.ConcurrentQueue<string> ThumbnailCalls=new();
+    public string? ThumbnailFailureSuffix;
+    private int activeThumbnails;
+    public int PeakThumbnails { get; private set; }
     public Task<IReadOnlyList<PickedFile>> PickAsync()=>Task.FromResult(Selection);
     public Task OpenFolderAsync(string f)=>Task.CompletedTask;
-    public Task<string?> ThumbnailAsync(string f,string m)=>Task.FromResult<string?>("data:image/png;base64,"+Convert.ToBase64String(File.ReadAllBytes(f)));
+    public async Task<string?> ThumbnailAsync(string file,string mime)
+    {
+        ThumbnailCalls.Enqueue(mime);
+        lock(ThumbnailCalls){activeThumbnails++;PeakThumbnails=Math.Max(PeakThumbnails,activeThumbnails);}
+        try
+        {
+            await Task.Delay(20);
+            if(ThumbnailFailureSuffix is { } suffix&&file.EndsWith(suffix,StringComparison.Ordinal))throw new IOException("Synthetic unavailable thumbnail");
+            return "data:image/png;base64,"+Convert.ToBase64String(await File.ReadAllBytesAsync(file));
+        }
+        finally{lock(ThumbnailCalls)activeThumbnails--;}
+    }
 }
 sealed class MemorySecrets:ISecretStore
 {

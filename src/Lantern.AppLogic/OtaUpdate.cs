@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.19";
-    public const int AndroidCode=52;
+    public const string Version="0.7.20";
+    public const int AndroidCode=53;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.19\n• Gitee 更新检测先查询最新发布，版本多时也能发现新版本。\n• 服务器查询会按渠道查找后续发行页，稳定版可在连续测试版之后被发现。\n• Windows 准备文件时复用一次读取的文件属性。";
+    public const string Notes="0.7.20\n• 发布接口暂时限流时，通过同一服务器的公开备用清单找到更新。\n• 接收文件只给图片与视频生成缩略图，缩略图失败时仍保存校验通过的文件。\n• 降低大文件进度查询和历史记录较多时的通知开销。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

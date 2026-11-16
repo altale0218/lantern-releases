@@ -2,7 +2,7 @@
 
 让分享回归设备之间。快速直连，尊重每一份隐私。
 
-局域网文件传输及设备聊天工具，提供 Windows 与 Android 客户端，以及 iPhone 与 iPad 通用项目。当前源码版本 **0.7.19**，Android versionCode **52**。本仓库准备包仅含源码、项目资源与开发文档，不含已签名客户端、个人设备数据或原始开发历史。
+局域网文件传输及设备聊天工具，提供 Windows 与 Android 客户端，以及 iPhone 与 iPad 通用项目。当前源码版本 **0.7.20**，Android versionCode **53**。本仓库准备包仅含源码、项目资源与开发文档，不含已签名客户端、个人设备数据或原始开发历史。
 
 ## 功能
 
@@ -66,7 +66,7 @@ ui/index.html 是离线演示，示例设备、地址、指纹和文件均为虚
 
 欢迎阅读 [贡献指南](CONTRIBUTING.md) 后提交问题和改进。测试安装包与更新日志见 [GitHub 发行页](https://github.com/altale0218/lantern-releases/releases) 和 [Gitee 发行页](https://gitee.com/altalatic/lantern-releases/releases)。
 
-更新中心用 HTTPS 访问公开发行页对应的服务器，不依赖局域网配对。Android 安装前同时校验 SHA-256、包名、版本和原应用签名。Windows 下载并校验 ZIP 后由用户手动更新。
+更新中心通过 HTTPS 直接访问发行服务器。接口受限时，从同一仓库读取公开备用清单。Android 安装前校验 SHA-256、包名、版本和原应用签名。Windows 下载并校验 ZIP 后由用户手动更新。安装包公开可下载后，维护者可用 `tools/New-ServerCatalog.ps1` 生成 `lantern-update-catalog` 分支的稳定版或测试版清单。
 
 ## 安卓紧凑聊天预览
 

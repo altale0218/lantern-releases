@@ -33,18 +33,21 @@ internal sealed record ServerCheck(ServerRelease? Release,ServerProbe[] Sources)
 public sealed class ServerUpdateClient : IDisposable
 {
     private const int CatalogPageSize=30,CatalogPageLimit=4;
-    private record Mirror(string Id,Uri Catalog,string Releases,string[] Hosts)
+    private record Mirror(string Id,Uri Catalog,Uri StaticCatalog,string Releases,string[] Hosts)
     {
         public Uri CatalogPage(int page) => new(Catalog,$"?per_page={CatalogPageSize}&page={page}"+(Id=="gitee"?"&direction=desc":""));
     }
     private record RemoteAsset(string Name,[property:JsonPropertyName("browser_download_url")] string? BrowserUrl,long? Size,string? Digest);
     private record RemoteRelease([property:JsonPropertyName("tag_name")] string TagName,bool Draft,bool Prerelease,string? Body,RemoteAsset[]? Assets);
+    private readonly record struct CatalogResult((Version Version,RemoteRelease Release)? Candidate,bool Complete);
 
     private static readonly Mirror[] Mirrors =
     [
         new("github",new("https://api.github.com/repos/altale0218/lantern-releases/releases"),
+            new("https://raw.githubusercontent.com/altale0218/lantern-releases/lantern-update-catalog/github/"),
             "https://github.com/altale0218/lantern-releases/releases/download/",["api.github.com","github.com","release-assets.githubusercontent.com","objects.githubusercontent.com"]),
         new("gitee",new("https://gitee.com/api/v5/repos/altalatic/lantern-releases/releases"),
+            new("https://gitee.com/altalatic/lantern-releases/raw/lantern-update-catalog/gitee/"),
             "https://gitee.com/altalatic/lantern-releases/releases/download/",["gitee.com","foruda.gitee.com"])
     ];
     private static readonly JsonSerializerOptions Json=new(JsonSerializerDefaults.Web){MaxDepth=20};
@@ -83,7 +86,7 @@ public sealed class ServerUpdateClient : IDisposable
         var ct=deadline.Token;
         try
         {
-            var (candidate,complete)=await FindCandidateAsync(mirror,channel,installed,ct);
+            var (candidate,complete)=await ReadCatalogAsync(mirror,channel,installed,ct);
             if(candidate is not { } match || match.Version<=installed)
                 return new(mirror.Id,!complete?"limited":candidate is null?"empty":"current");
             var (latest,release)=match;
@@ -97,10 +100,11 @@ public sealed class ServerUpdateClient : IDisposable
             var package=FindAsset(mirror,release,name);
             var checksum=FindAsset(mirror,release,"SHA256SUMS.txt");
             var sum=ReadAsync(mirror,checksum,16*1024,ct);
-            var length=PackageLengthAsync(mirror,package,release.Assets!.Single(a=>a.Name==name).Size,ct);
+            var asset=release.Assets!.Single(a=>a?.Name==name);
+            var length=PackageLengthAsync(mirror,package,asset.Size,ct);
             await Task.WhenAll(sum,length);
             string digest=ParseChecksum(await sum,name);
-            string? reported=release.Assets!.Single(a=>a.Name==name).Digest;
+            string? reported=asset.Digest;
             if(reported is not null&&!reported.Equals("sha256:"+digest,StringComparison.OrdinalIgnoreCase))throw new CryptographicException("发行附件摘要不一致");
             var selected=new ServerRelease(latest.ToString(),platform,channel,mirror.Id,await length,digest,notes[..Math.Min(6000,notes.Length)],versionCode);
             if(!selected.IsValid())throw new InvalidDataException("版本或安装包信息无效");
@@ -111,7 +115,34 @@ public sealed class ServerUpdateClient : IDisposable
         catch(Exception ex) when(ex is IOException or InvalidDataException or JsonException or CryptographicException){return new(mirror.Id,"invalid");}
     }
 
-    private async Task<((Version Version,RemoteRelease Release)? Candidate,bool Complete)> FindCandidateAsync(
+    private async Task<CatalogResult> ReadCatalogAsync(Mirror mirror,string channel,Version installed,CancellationToken token)
+    {
+        CatalogResult primary;
+        try { primary=await FindCandidateAsync(mirror,channel,installed,token); }
+        catch(HttpRequestException ex) when(ex.StatusCode is null or HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests or
+            HttpStatusCode.RequestTimeout or HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout)
+        {
+            if(await ReadStaticCatalogAsync(mirror,channel,token) is { } fallback)return fallback;
+            throw;
+        }
+        if(primary.Complete||primary.Candidate is { } match&&match.Version>installed)return primary;
+        return await ReadStaticCatalogAsync(mirror,channel,token)??primary;
+    }
+
+    private async Task<CatalogResult?> ReadStaticCatalogAsync(Mirror mirror,string channel,CancellationToken token)
+    {
+        var url=new Uri(mirror.StaticCatalog,channel+".json");
+        byte[] data;
+        try { data=await ReadAsync(mirror with{Hosts=[url.IdnHost]},url,64*1024,token,noRedirect:true); }
+        catch(HttpRequestException ex) when(ex.StatusCode==HttpStatusCode.NotFound){return null;}
+        var releases=JsonSerializer.Deserialize<RemoteRelease[]>(data,Json);
+        if(releases is null or {Length:>1})throw new InvalidDataException("备用更新清单无效");
+        var candidate=RankReleases(releases,channel=="beta");
+        if(releases.Length==1&&candidate is null)throw new InvalidDataException("备用更新清单的频道或版本无效");
+        return new(candidate,true);
+    }
+
+    private async Task<CatalogResult> FindCandidateAsync(
         Mirror mirror,string channel,Version installed,CancellationToken token)
     {
         (Version Version,RemoteRelease Release)? best=null;
@@ -120,15 +151,22 @@ public sealed class ServerUpdateClient : IDisposable
         {
             var data=await ReadAsync(mirror,mirror.CatalogPage(page),2*1024*1024,token);
             var releases=JsonSerializer.Deserialize<RemoteRelease[]>(data,Json)??throw new InvalidDataException("服务器发行列表无效");
-            foreach(var item in releases)
-            {
-                if(item.Draft||item.Prerelease!=prerelease||item.TagName is not {Length:>1} tag||tag[0]!='v'||!TryVersion(tag[1..],out var version))continue;
-                if(best is null||version>best.Value.Version)best=(version,item);
-            }
-            if(releases.Length<CatalogPageSize)return (best,true);
-            if(best is { } match&&match.Version>installed)return (best,false);
+            if(RankReleases(releases,prerelease) is { } ranked&&(best is null||ranked.Version>best.Value.Version))best=ranked;
+            if(releases.Length<CatalogPageSize)return new(best,true);
+            if(best is { } match&&match.Version>installed)return new(best,false);
         }
-        return (best,false);
+        return new(best,false);
+    }
+
+    private static (Version Version,RemoteRelease Release)? RankReleases(RemoteRelease[] releases,bool prerelease)
+    {
+        (Version Version,RemoteRelease Release)? best=null;
+        foreach(var item in releases)
+        {
+            if(item is null||item.Draft||item.Prerelease!=prerelease||item.TagName is not {Length:>1} tag||tag[0]!='v'||!TryVersion(tag[1..],out var version))continue;
+            if(best is null||version>best.Value.Version)best=(version,item);
+        }
+        return best;
     }
 
     private static int ParseAndroidVersionCode(string notes)
@@ -141,7 +179,7 @@ public sealed class ServerUpdateClient : IDisposable
 
     private static Uri FindAsset(Mirror mirror,RemoteRelease release,string name)
     {
-        var assets=release.Assets?.Where(a=>a.Name==name).ToArray();
+        var assets=release.Assets?.Where(a=>a?.Name==name).ToArray();
         string exact=mirror.Releases+release.TagName+"/"+name;
         if(assets is not {Length:1}||assets[0].BrowserUrl!=exact)throw new InvalidDataException("发行附件缺失或链接无效");
         return new Uri(exact);
@@ -162,9 +200,9 @@ public sealed class ServerUpdateClient : IDisposable
         return response.Content.Headers.ContentLength??throw new InvalidDataException("服务器未返回安装包大小");
     }
 
-    private async Task<byte[]> ReadAsync(Mirror mirror,Uri url,int max,CancellationToken token)
+    private async Task<byte[]> ReadAsync(Mirror mirror,Uri url,int max,CancellationToken token,bool noRedirect=false)
     {
-        using var response=await RequestAsync(mirror,url,HttpMethod.Get,token);
+        using var response=await RequestAsync(mirror,url,HttpMethod.Get,token,noRedirect);
         long? length=response.Content.Headers.ContentLength;
         if(length>max)throw new InvalidDataException("更新服务器响应过大");
         await using var stream=await response.Content.ReadAsStreamAsync(token);
@@ -217,7 +255,7 @@ public sealed class ServerUpdateClient : IDisposable
             throw new CryptographicException("下载文件的 SHA-256 校验失败");
     }
 
-    private async Task<HttpResponseMessage> RequestAsync(Mirror mirror,Uri url,HttpMethod method,CancellationToken token)
+    private async Task<HttpResponseMessage> RequestAsync(Mirror mirror,Uri url,HttpMethod method,CancellationToken token,bool noRedirect=false)
     {
         for(int hop=0;hop<=5;hop++)
         {
@@ -229,6 +267,7 @@ public sealed class ServerUpdateClient : IDisposable
             var location=response.Headers.Location;
             response.Dispose();
             if((int)status is not (301 or 302 or 303 or 307 or 308))throw new HttpRequestException("更新服务器不可用",null,status);
+            if(noRedirect)throw new InvalidDataException("备用更新清单地址不能重定向");
             if(location is null||hop==5)throw new InvalidDataException("更新服务器重定向过多或缺少地址");
             url=new Uri(url,location);
         }
