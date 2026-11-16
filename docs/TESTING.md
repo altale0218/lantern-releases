@@ -17,6 +17,18 @@ pwsh -File tools/Run-Checks.ps1 -Network
 
 网络检查使用生成的临时身份和内存密钥，可能发出测试发现广播。使用独立临时测试目录，不传入应用真实数据目录。其他长时间、多设备、Shell/剪贴板及真机测试可单独运行 tests 中的项目，并先阅读参数和副作用。
 
+## 跨平台发现与 Apple 验证
+
+在有局域网 IPv4 的 Windows 上运行下列检查。使用独立空目录，Windows 的 DNS-SD 浏览器会读取两个虚构设备实际发布的 Bonjour 记录，然后通过该地址和端口完成双方确认和设备认证。
+
+```powershell
+dotnet run --project tests/Lantern.WindowsDiscoveryTests -- ./new-discovery-test-data
+dotnet run --project tests/Lantern.ChatTests -- ./new-chat-windows-data --apple
+dotnet run --project tests/Lantern.ChatTests -- ./new-chat-android-data --apple --android
+```
+
+聊天检查在 Windows 或 Android 配置与 iPhone、iPad 配置之间测试共享加密协议，使用本机回环 TCP。Apple 配置禁用旧版 UDP 发现。在 Mac 构建签名后，按 [Apple 真机验证](../src/Lantern.iOS/README.md#真机验证) 检查系统局域网授权、自动发现和实际收发。
+
 Java WindowStyle 子目录中的 android 类型是 JVM 契约测试替身，只用于检查启动顺序和异常处理，不是 Android Framework，也不会进入应用项目。API 数字只是模拟条件，不能作为对应系统或机型已经实测的证据。
 
 不附原工作区的测试报告、手机诊断、截图、日志或接收文件；公开报告请重新生成并脱敏。

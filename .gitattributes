@@ -1,7 +1,6 @@
-* text=auto eol=lf
+# Preserve audited bytes for the source manifest.
+* -text !eol
 *.ico binary
 *.png binary
 *.jpg binary
 *.webp binary
-ui/** -text !eol
-licenses/** -text !eol

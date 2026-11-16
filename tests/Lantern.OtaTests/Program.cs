@@ -64,8 +64,24 @@ windows.Package=new(manifest,apk);await Command(phone,check);
 await Command(phone,new{type="ota-download",path="C:/Windows/notepad.exe"});await WaitFinished();
 Assert(await Phase()=="ready"&&android.Validations>0,"Verified download becomes installable");
 string local=Path.Combine(android.DataDirectory,"OtaCache","update.apk");Assert(File.ReadAllBytes(apk).SequenceEqual(File.ReadAllBytes(local)),"Downloaded APK SHA256 matches");
+android.CanInstallUpdates=false;
+Assert((await Command(phone,new{type="ota-install-permission"})).GetProperty("ok").GetBoolean()&&android.PermissionRequests==1,"Guide opens Android installation permission");
+Assert((await Command(phone,new{type="ota-install"})).GetProperty("ok").GetBoolean()&&android.PermissionRequests==2&&android.Installs==0&&File.Exists(local),"Denied installation permission retains verified package");
+android.CanInstallUpdates=true;
 Assert((await Command(phone,new{type="ota-install"})).GetProperty("ok").GetBoolean()&&android.Installs==1,"Explicit user installation command");
 Assert(!(await State()).ToString().Contains(local),"Private update path not exposed in bridge");
+var restartedHost=new Host("Android",Path.Combine(root,"AndroidRestart"));
+var restartedCache=Directory.CreateDirectory(Path.Combine(restartedHost.DataDirectory,"OtaCache")).FullName;
+File.Copy(local,Path.Combine(restartedCache,"update.apk"),true);
+File.Copy(Path.Combine(Path.GetDirectoryName(local)!,"ready.json"),Path.Combine(restartedCache,"ready.json"),true);
+await using(var restarted=new AppController(restartedHost))
+{
+    await restarted.InitializeAsync(0);
+    var restored=Element(await restarted.GetStateAsync()).GetProperty("ota");
+    Assert(restored.GetProperty("phase").GetString()=="ready"&&restartedHost.Validations>0,"Verified cache is restored without connected PC");
+    Assert((await Command(restarted,new{type="ota-install"})).GetProperty("ok").GetBoolean()&&restartedHost.Installs==1,"Cached package installs after restart");
+}
+Assert(File.Exists(Path.Combine(restartedCache,"update.apk")),"Closing controller retains verified APK");
 await Command(phone,new{type="ota-clear"});Assert(!File.Exists(local)&&await Phase()=="idle","Delete cached package");
 android.RejectSignature=true;await Command(phone,check);await Command(phone,new{type="ota-download"});await WaitFinished();
 Assert(await Phase()=="failed"&&!File.Exists(local),"Platform signature rejection never installs or retains package");android.RejectSignature=false;
@@ -90,7 +106,9 @@ Console.WriteLine("PASS OTA real TCP/PAKE: no package, encrypted check/download,
 sealed class Host(string platform,string directory):IPlatformHost
 {
     public string Platform=>platform;public string DeviceName=>"OTA test";public string DataDirectory=>directory;public ISecretStore Secrets{get;}=new Secrets();
-    public int Code=18;public int ApplicationVersionCode=>Code;public OtaPackage? Package;public int Validations,Installs;public bool RejectSignature;
+    public int Code=18;public int ApplicationVersionCode=>Code;public OtaPackage? Package;public int Validations,Installs,PermissionRequests;public bool RejectSignature;
+    public bool CanInstallUpdates {get;set;}=true;
+    public Task OpenUpdatePermissionAsync(){PermissionRequests++;return Task.CompletedTask;}
     public Task<OtaPackage?> GetHostedUpdateAsync(CancellationToken ct)=>Task.FromResult(Package);
     public Task ValidateUpdateAsync(string file,OtaManifest m){Validations++;if(RejectSignature)throw new IOException("Test platform: signature mismatch");return Task.CompletedTask;}
     public Task InstallUpdateAsync(string file){Installs++;return Task.CompletedTask;}

@@ -20,13 +20,14 @@ public sealed class WindowsUpdateStore
             if(!info.Exists||!apk.Exists){cached=null;stamp=null;return null;}
             var next=(info.LastWriteTimeUtc.Ticks,apk.LastWriteTimeUtc.Ticks,apk.Length);
             if(stamp==next)return cached;
-            cached=null;stamp=next;
-            if(info.Length>32000||(apk.Attributes&FileAttributes.ReparsePoint)!=0)return null;
+            cached=null;stamp=null;
+            if(info.Length>32000||(info.Attributes&FileAttributes.ReparsePoint)!=0||(apk.Attributes&FileAttributes.ReparsePoint)!=0)return null;
             var manifest=JsonSerializer.Deserialize<OtaManifest>(await File.ReadAllTextAsync(info.FullName,ct),AppController.Json);
             if(manifest is null)return null;
             manifest.Validate();
             if(manifest.Version!=AppRelease.Version||manifest.VersionCode!=AppRelease.AndroidCode)return null;
             await manifest.VerifyAsync(apk.FullName,ct);
+            stamp=next;
             return cached=new(manifest,apk.FullName);
         }
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or JsonException or System.Security.Cryptography.CryptographicException or ArgumentException)

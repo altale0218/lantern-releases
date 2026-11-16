@@ -19,8 +19,8 @@ async Task Pair(AppController a,AppController b)
     await using(connection.Channel)await connection.Channel.SendJsonAsync(new{PairOnly=true},CancellationToken.None);
     Service(a).ConfirmPairing=originalA;Service(b).ConfirmPairing=originalB;
     var aid=await Id(a);var bid=await Id(b);
-    Service(a).Nearby[bid]=new(new(bid,"同名设备","Android"),"127.0.0.1",Service(b).Port,DateTimeOffset.UtcNow);
-    Service(b).Nearby[aid]=new(new(aid,"同名设备","Windows"),"127.0.0.1",Service(a).Port,DateTimeOffset.UtcNow);
+    Service(a).Nearby[bid]=new(b.LocalIdentity,"127.0.0.1",Service(b).Port,DateTimeOffset.UtcNow);
+    Service(b).Nearby[aid]=new(a.LocalIdentity,"127.0.0.1",Service(a).Port,DateTimeOffset.UtcNow);
 }
 async Task Wait(AppController c,string id)
 {
@@ -46,7 +46,10 @@ if(args[0]=="--native-chat")
     throw new Exception("Native reply timeout");
 }
 var root=Path.GetFullPath(args[0]);Directory.CreateDirectory(root);
-var ah=new Host(Path.Combine(root,"A"),"Windows");var bh=new Host(Path.Combine(root,"B"),"Android");var ch=new Host(Path.Combine(root,"C"),"Android");
+bool apple=args.Contains("--apple"),android=args.Contains("--android");
+var ah=new Host(Path.Combine(root,"A"),android?"Android":"Windows");
+var bh=new Host(Path.Combine(root,"B"),apple?"iOS":"Android");
+var ch=new Host(Path.Combine(root,"C"),apple?"iPadOS":"Android");
 var a=new AppController(ah);var b=new AppController(bh);var c=new AppController(ch);
 try
 {
@@ -101,6 +104,20 @@ try
     var oldKey=(await Records(a)).First(t=>t.GetProperty("peerId").GetString()==cid).GetProperty("conversationKey").GetString();
     await Pair(a,c);var newRecord=await Cmd(a,new{type="chat-send",peerId=cid,text="重新配对"});await Wait(a,newRecord.GetProperty("id").GetString()!);
     Assert((await Records(a)).Single(t=>t.GetProperty("id").GetString()==newRecord.GetProperty("id").GetString()).GetProperty("conversationKey").GetString()!=oldKey,"changed pairing key creates separate conversation");
+    if (apple)
+    {
+        await Pair(b,c);
+        var appleMessage=await Cmd(c,new{type="chat-send",peerId=bid,text="iPad 与 iPhone 加密消息"});
+        await Wait(c,appleMessage.GetProperty("id").GetString()!);
+        Assert((await Records(b)).Any(t=>t.GetProperty("id").GetString()==appleMessage.GetProperty("id").GetString()),"simulated iPad and iPhone exchange verified text without UDP discovery");
+        await Pair(b,a);
+        bh.Selection=ah.Selection;
+        Assert((await Cmd(b,new{type="pick"})).GetProperty("ok").GetBoolean(),"simulated iPhone selects a file after restart");
+        Assert((await Cmd(b,new{type="send",peerId=aid})).GetProperty("ok").GetBoolean(),"simulated iPhone queues authenticated file in the reverse direction");
+        for(int i=0;i<200&&!(await Records(a)).Any(t=>t.GetProperty("kind").GetString()=="files"&&t.GetProperty("direction").GetString()=="receive"&&t.GetProperty("state").GetString()=="completed");i++)await Task.Delay(30);
+        var reverse=(await Records(a)).Single(t=>t.GetProperty("kind").GetString()=="files"&&t.GetProperty("direction").GetString()=="receive");
+        Assert(reverse.GetProperty("state").GetString()=="completed"&&File.ReadAllBytes(Directory.GetFiles(reverse.GetProperty("folder").GetString()!).Single()).SequenceEqual(image),"simulated iPhone sends the exact verified file bytes back to the other platform");
+    }
 }
 finally{await a.DisposeAsync();await b.DisposeAsync();await c.DisposeAsync();}
 var migrationHost=new Host(Path.Combine(root,"Migration"),"Windows");Directory.CreateDirectory(migrationHost.DataDirectory);
@@ -114,6 +131,7 @@ Console.WriteLine("PASS all chat integration/security/migration scenarios");
 static class Extensions{public static T Pipe<T>(this object o,Func<object,T> f)=>f(o);}
 sealed class Host(string directory,string platform):IPlatformHost
 {
+    public bool UseUdpDiscovery=>platform is not ("iOS" or "iPadOS");
     public string Platform=>platform;public string DeviceName=>"同名设备";public string DataDirectory=>directory;public ISecretStore Secrets{get;}=new MemorySecrets();
     public IReadOnlyList<PickedFile> Selection=[];
     public Task<IReadOnlyList<PickedFile>> PickAsync()=>Task.FromResult(Selection);

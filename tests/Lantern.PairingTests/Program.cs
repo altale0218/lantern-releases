@@ -65,6 +65,19 @@ Host ah=new(Path.Combine(root,"A"),"Windows"),bh=new(Path.Combine(root,"B"),"And
 await using var a=new AppController(ah);await using var b=new AppController(bh);await using var c=new AppController(ch);
 await a.InitializeAsync(0);await b.InitializeAsync(0);await c.InitializeAsync(0);
 string aid=await Id(a),bid=await Id(b),cid=await Id(c);
+foreach (string platform in new[] {"Windows","Android","iOS","iPadOS"})
+{
+    var device = new DeviceIdentity(aid,"Synthetic private device name",platform);
+    string instance = LocalServiceIdentity.InstanceName(device);
+    var observed = LocalServiceIdentity.Parse(instance);
+    Assert(observed?.Id==aid&&observed.Platform==platform&&!instance.Contains(device.Name),$"Bonjour {platform} instance locates a device without exposing its display name");
+}
+Assert(LocalServiceIdentity.Parse("iphone-"+aid+" ") is null && LocalServiceIdentity.Parse("unknown-"+aid) is null &&
+    LocalServiceIdentity.Parse("ipad-00000000000000000000000000000000") is null,"invalid Bonjour labels are ignored");
+Assert(LocalServiceIdentity.IsEndpoint(System.Net.IPAddress.Parse("192.168.4.20"),53319)&&
+    !LocalServiceIdentity.IsEndpoint(System.Net.IPAddress.Loopback,53319)&&
+    !LocalServiceIdentity.IsEndpoint(System.Net.IPAddress.Parse("192.168.4.20"),80)&&
+    !LocalServiceIdentity.IsEndpoint(System.Net.IPAddress.Parse("203.0.113.1"),53319),"Bonjour endpoint hints stay on allowed local IPv4 routes");
 await Begin(a,b);
 var ar=(await Requests(a)).Single();var br=(await Requests(b)).Single();
 Assert(ar.GetProperty("verificationCode").GetString()==br.GetProperty("verificationCode").GetString(),"both PAKE-authenticated sessions show identical verification code");

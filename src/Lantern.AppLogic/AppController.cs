@@ -37,6 +37,8 @@ public interface IPlatformHost
     Task<OtaPackage?> GetHostedUpdateAsync(CancellationToken ct)=>Task.FromResult<OtaPackage?>(null);
     Task ValidateUpdateAsync(string file,OtaManifest manifest)=>Task.FromException(new IOException("此平台不支持安装更新"));
     Task InstallUpdateAsync(string file)=>Task.FromException(new IOException("此平台不支持安装更新"));
+    bool CanInstallUpdates=>false;
+    Task OpenUpdatePermissionAsync()=>Task.FromException(new IOException("此平台不支持安装权限设置"));
     Task CopyLocalFileAsync(string file,bool received)=>Task.FromException(new IOException("此平台不支持复制文件"));
     Task DeleteLocalFileAsync(string file)=>Task.FromException(new IOException("此平台不支持此操作"));
 }
@@ -203,7 +205,7 @@ public sealed partial class AppController(IPlatformHost host) : IAsyncDisposable
         UiTask[] snapshot; lock (taskGate) snapshot = tasks.Values.OrderByDescending(t => t.Created).ToArray();
         // Native source paths are persisted locally, never exposed through the page bridge.
         var visibleTasks=snapshot.Select(t=>new{t.Id,t.BatchId,t.Kind,t.ChatText,t.ConversationKey,t.PeerId,t.Peer,t.Name,t.Direction,t.State,t.Total,t.Completed,t.Speed,t.Created,t.Message,t.Folder,files=t.Files.Select(f=>new{f.Id,f.Name,f.Mime,f.Size,f.Completed,preview=settings.Thumbnails?f.Preview:null,f.Deleted,canOpen=!f.Deleted&&(t.Direction=="send"?f.LocalPath is not null:t.Folder is not null)})});
-        return new { mode = "native", version=AppRelease.Version, releaseNotes=new{version=AppRelease.Version,notes=AppRelease.Notes,showOnStartup=releaseUnseen}, ota, speedTest, hostedUpdate=host.Platform=="Windows"?(await host.GetHostedUpdateAsync(life.Token))?.Manifest:null, self = me, systemTheme = host.SystemTheme, systemFontScale = host.SystemFontScale, address = Addresses(), port = service.Port, inbox = host.ReceiveLocation, settings, transferNotifications = host.TransferNotificationStatus, connection = host.ConnectionStatus, devices, tasks = visibleTasks,
+        return new { mode = "native", version=AppRelease.Version, releaseNotes=new{version=AppRelease.Version,notes=AppRelease.Notes,showOnStartup=releaseUnseen}, ota, canInstallUpdates=host.CanInstallUpdates, speedTest, hostedUpdate=host.Platform=="Windows"?(await host.GetHostedUpdateAsync(life.Token))?.Manifest:null, self = me, systemTheme = host.SystemTheme, systemFontScale = host.SystemFontScale, address = Addresses(), port = service.Port, inbox = host.ReceiveLocation, settings, transferNotifications = host.TransferNotificationStatus, connection = host.ConnectionStatus, devices, tasks = visibleTasks,
             pending = pending.Select(p => new { id = p.Key, peer = p.Value.Offer.Sender.Name, count = p.Value.Offer.Files.Length, total = p.Value.Offer.Total }).ToArray(),
             pairingRequests=pairingRequests.Values.Select(p=>new{id=p.Id,peer=p.Challenge.Peer,verificationCode=p.Challenge.VerificationCode,outgoing=p.Challenge.Outgoing,expires=p.Expires,answered=p.Answer.Task.IsCompleted,accepted=p.Answer.Task.IsCompletedSuccessfully&&p.Answer.Task.Result}).ToArray(),
             pairingBusy=pairingOperation is {IsCompleted:false},
@@ -248,6 +250,9 @@ public sealed partial class AppController(IPlatformHost host) : IAsyncDisposable
                 case "ota-check": return await CheckUpdateAsync(Text("peerId"));
                 case "ota-download": return StartUpdateDownload();
                 case "ota-install": return await InstallUpdateAsync();
+                case "ota-install-permission":
+                    await host.OpenUpdatePermissionAsync();
+                    return new{ok=true};
                 case "ota-cancel": try{otaCancel?.Cancel();}catch(ObjectDisposedException){}return new{ok=true};
                 case "ota-clear":
                     await StopStartupUpdateCheckAsync();

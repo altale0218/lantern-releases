@@ -22,6 +22,7 @@ public sealed class MainActivity : Activity
     private AndroidHost host = null!;
     private readonly CancellationTokenSource stopped = new();
     private WifiManager.MulticastLock? multicast;
+    private AndroidServiceDiscovery? localDiscovery;
     private JsBridge? bridge;
     private bool ready;
     private BrandSplash? splash;
@@ -106,7 +107,7 @@ public sealed class MainActivity : Activity
     {
         Android.Util.Log.Error("Lantern.Startup", startupStage+": "+ex);
         if(destroyed||IsFinishing)return;
-        string diagnostic=$"Lantern 0.7.4\n阶段：{startupStage}\n设备：{Android.OS.Build.Manufacturer} {Android.OS.Build.Model}\nAndroid：{Android.OS.Build.VERSION.Release} / API {(int)Android.OS.Build.VERSION.SdkInt}\n错误：{ex}";
+        string diagnostic=$"Lantern 0.7.6\n阶段：{startupStage}\n设备：{Android.OS.Build.Manufacturer} {Android.OS.Build.Model}\nAndroid：{Android.OS.Build.VERSION.Release} / API {(int)Android.OS.Build.VERSION.SdkInt}\n错误：{ex}";
         var panel=new Android.Widget.LinearLayout(this){Orientation=Android.Widget.Orientation.Vertical};
         panel.SetPadding(32,64,32,32);
         var text=new Android.Widget.TextView(this){Text="启动未完成，请复制下面的诊断信息。\n\n"+diagnostic};
@@ -128,6 +129,7 @@ public sealed class MainActivity : Activity
                 if(transferNotifications is not null){transferNotifications.Update(controller.GetTransferNotificationSnapshot());host.TransferNotificationStatus=transferNotifications.Status;}
                 if(ready)
                 {
+                    (localDiscovery ??= new AndroidServiceDiscovery(this,controller)).Refresh();
                     ApplyTheme();
                     string json=JsonSerializer.Serialize(await controller.GetStateAsync(),AppController.Json);
                     if(json!=previousState)
@@ -241,6 +243,7 @@ public sealed class MainActivity : Activity
         destroyed=true;
         try
         {
+            localDiscovery?.Dispose();
             stopped.Cancel();host?.CancelPick();
             if(OperatingSystem.IsAndroidVersionAtLeast(33)&&backCallback is not null)
             {OnBackInvokedDispatcher.UnregisterOnBackInvokedCallback(backCallback);backCallback.Dispose();backCallback=null;}

@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.4";
-    public const int AndroidCode=37;
+    public const string Version="0.7.6";
+    public const int AndroidCode=39;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.4\n• 大文件加密传输减少内存分配，沿用已配对设备身份验证与 SHA-256 校验。\n• 减少启动时的重复读取和写入，优化设备刷新，支持为离线的已配对设备手动连接地址。\n• 任务详情、统计说明、右键菜单与切页新增轻量缓动，支持系统的减少动态效果设置。";
+    public const string Notes="0.7.6\n• 首次引导增加安卓系统安装权限提示，可稍后在更新中心授权。\n• 设置新增独立的软件更新板块，各页面可快捷打开更新中心。\n• 已校验的 APK 退出后保留；改进启动检查重试与 Windows 配套包校验。";
 }
 public record OtaManifest(int Protocol,string PackageId,string Version,int VersionCode,long Size,string Sha256,string Notes)
 {
@@ -49,23 +49,26 @@ public sealed partial class AppController
         startupUpdateCancel=cancel;cancel.CancelAfter(TimeSpan.FromSeconds(45));
         startupUpdateJob=Task.Run(async()=>
         {
-            var attempted=new HashSet<string>(StringComparer.Ordinal);
+            var attempted=new Dictionary<string,int>(StringComparer.Ordinal);
             try
             {
-                // Discovery may arrive after the page opens. Each remembered PC is tried once,
-                // using the same authenticated update connection as a manual check.
+                var remembered=(await trust.ListAsync()).Where(t=>t.Identity.Platform=="Windows").ToArray();
+                if(remembered.Length==0)return;
                 while(!cancel.IsCancellationRequested)
                 {
-                    await Task.Delay(1500,cancel.Token);
-                    var remembered=await trust.ListAsync();
-                    foreach(var saved in remembered.Where(t=>t.Identity.Platform=="Windows"))
+                    foreach(var saved in remembered)
                     {
                         string id=saved.Identity.Id;
-                        if(service.Presence(id)=="offline"||!service.Nearby.ContainsKey(id)||!attempted.Add(id))continue;
+                        int count=attempted.GetValueOrDefault(id);
+                        if(count>=2||service.Presence(id)=="offline"||!service.Nearby.ContainsKey(id))continue;
+                        attempted[id]=count+1;
                         await CheckUpdateAsync(id,true,cancel.Token);
                         if(ota.Phase is "available" or "ready")return;
+                        if(ota.PeerId==id&&ota.Phase is "current" or "idle")attempted[id]=2;
                         cancel.Token.ThrowIfCancellationRequested();
                     }
+                    if(remembered.All(saved=>attempted.GetValueOrDefault(saved.Identity.Id)>=2))return;
+                    await Task.Delay(900,cancel.Token);
                 }
             }
             catch(OperationCanceledException) { }
@@ -89,16 +92,23 @@ public sealed partial class AppController
             if(Directory.Exists(UpdateRoot))
                 foreach(string staging in Directory.GetDirectories(UpdateRoot,"Transfer-*"))
                     if((File.GetAttributes(staging)&FileAttributes.ReparsePoint)==0&&Path.GetDirectoryName(Path.GetFullPath(staging))==Path.GetFullPath(UpdateRoot))Directory.Delete(staging,true);
-            var manifest=JsonSerializer.Deserialize<OtaManifest>(await File.ReadAllTextAsync(UpdateReady),Json)!;
+            if(!File.Exists(UpdateReady)||!File.Exists(UpdateFile)){ClearUpdateFiles();return;}
+            var manifest=JsonSerializer.Deserialize<OtaManifest>(await File.ReadAllTextAsync(UpdateReady,life.Token),Json)
+                ??throw new InvalidDataException("更新缓存缺少清单");
             manifest.Validate();
             if(manifest.VersionCode<=host.ApplicationVersionCode){ClearUpdateFiles();return;}
             await manifest.VerifyAsync(UpdateFile,life.Token);await host.ValidateUpdateAsync(UpdateFile,manifest);
             ota=new("ready","安装包已校验，可继续安装",Release:manifest,Completed:manifest.Size);
         }
-        catch(Exception ex) when(ex is not OutOfMemoryException)
+        catch(OperationCanceledException) when(life.IsCancellationRequested) { }
+        catch(Exception ex) when(ex is InvalidDataException or JsonException or CryptographicException)
         {
             try{ClearUpdateFiles();}catch(IOException){ota=new("failed","无法清理旧更新缓存，请稍后重试");}
             catch(UnauthorizedAccessException){ota=new("failed","无法访问旧更新缓存");}
+        }
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException)
+        {
+            ota=new("failed","暂时无法读取已下载的更新包，重启后将重新校验");
         }
     }
     private void ClearUpdateFiles(){if(File.Exists(UpdateFile))File.Delete(UpdateFile);if(File.Exists(UpdateReady))File.Delete(UpdateReady);}
@@ -113,7 +123,8 @@ public sealed partial class AppController
     {
         if(host.Platform!="Android")throw new IOException("请在安卓端检查更新");
         if(!automatic)await StopStartupUpdateCheckAsync();
-        if(!otaGate.Wait(0))throw new IOException("更新操作正在进行");
+        if(!otaGate.Wait(0))return new{ok=false,message="更新操作正在进行"};
+        var previous=ota;
         try
         {
             if(ota.Phase=="ready")return new{ok=true,message="已有已校验安装包，请先安装或删除"};
@@ -131,7 +142,7 @@ public sealed partial class AppController
                 return new{ok=true};
             }
         }
-        catch(Exception ex) when(ex is not OutOfMemoryException){ota=automatic?new():new("failed","检查失败："+ex.Message,peerId);return new{ok=false,message=ota.Message};}
+        catch(Exception ex) when(ex is not OutOfMemoryException){ota=automatic?previous:new("failed","检查失败："+ex.Message,peerId);return new{ok=false,message=ota.Message};}
         finally{otaGate.Release();}
     }
     private object StartUpdateDownload()
@@ -150,6 +161,7 @@ public sealed partial class AppController
     private async Task DownloadUpdateAsync(OtaView selected,CancellationToken ct)
     {
         string? folder=null;
+        bool committed=false;
         try
         {
             var expected=selected.Release!;
@@ -171,26 +183,45 @@ public sealed partial class AppController
                     string apk=Directory.GetFiles(staging,"*-Lantern-Android.apk").Single();
                     if(await trust.FindAsync(selected.PeerId!) is null)throw new IOException("电脑的设备信任已撤销");
                     await expected.VerifyAsync(apk,token);await host.ValidateUpdateAsync(apk,expected);
-                    File.Move(apk,UpdateFile,true);await File.WriteAllTextAsync(UpdateReady,JsonSerializer.Serialize(expected,Json),token);
+                    string marker=Path.Combine(staging,"ready.json");
+                    await File.WriteAllTextAsync(marker,JsonSerializer.Serialize(expected,Json),token);
+                    token.ThrowIfCancellationRequested();
+                    File.Move(apk,UpdateFile,true);
+                    File.Move(marker,UpdateReady,true);
+                    committed=true;
                 });
             }
             ota=selected with{Phase="ready",Message="更新包已校验，点击安装；系统将要求确认",Completed=expected.Size,Speed=0};
         }
         catch(Exception ex) when(ex is not OutOfMemoryException)
         {
-            try{ClearUpdateFiles();}catch(IOException){}catch(UnauthorizedAccessException){}
-            ota=new("failed",ct.IsCancellationRequested?"更新下载已取消，可重新检查":"更新失败："+ex.Message,selected.PeerId);
+            if(committed)ota=selected with{Phase="ready",Message="更新包已校验，可继续安装",Completed=selected.Release!.Size,Speed=0};
+            else ota=new("failed",ct.IsCancellationRequested?"更新下载已取消，可重新检查":"更新失败："+ex.Message,selected.PeerId);
         }
         finally
         {
-            if(folder is not null&&Path.GetDirectoryName(Path.GetFullPath(folder))==Path.GetFullPath(UpdateRoot)&&Path.GetFileName(folder).StartsWith("Transfer-",StringComparison.Ordinal))Directory.Delete(folder,true);
+            if(folder is not null&&Path.GetDirectoryName(Path.GetFullPath(folder))==Path.GetFullPath(UpdateRoot)&&Path.GetFileName(folder).StartsWith("Transfer-",StringComparison.Ordinal))
+            {
+                try{Directory.Delete(folder,true);}catch(IOException){}catch(UnauthorizedAccessException){}
+            }
         }
     }
     private async Task<object> InstallUpdateAsync()
     {
         if(host.Platform!="Android"||ota.Phase!="ready"||ota.Release is null)throw new IOException("没有已校验的更新包");
         if(!otaGate.Wait(0))throw new IOException("更新操作正在进行");
-        try{await ota.Release.VerifyAsync(UpdateFile,life.Token);await host.ValidateUpdateAsync(UpdateFile,ota.Release);await host.InstallUpdateAsync(UpdateFile);return new{ok=true,message="请在系统界面确认安装；若刚授权安装权限，请返回后再次点击安装"};}
+        try
+        {
+            if(!host.CanInstallUpdates)
+            {
+                await host.OpenUpdatePermissionAsync();
+                return new{ok=true,message="授权后返回更新中心，再点击安装"};
+            }
+            await ota.Release.VerifyAsync(UpdateFile,life.Token);
+            await host.ValidateUpdateAsync(UpdateFile,ota.Release);
+            await host.InstallUpdateAsync(UpdateFile);
+            return new{ok=true,message="请在系统界面确认安装"};
+        }
         finally{otaGate.Release();}
     }
     private async Task ServeUpdateAsync(AuthenticatedConnection connection,JsonElement request,CancellationToken ct)

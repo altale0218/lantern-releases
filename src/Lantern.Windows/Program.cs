@@ -38,6 +38,7 @@ public sealed class MainWindow : Form
     private readonly WebView2 web = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(13,16,22) };
     private readonly System.Windows.Forms.Timer tick = new() { Interval = 600 };
     private readonly AppController controller;
+    private readonly WindowsServiceDiscovery localDiscovery;
     private readonly WindowsHost host;
     private readonly WindowsTransferNotifications notifications;
     private readonly TaskbarProgress taskbar=new();
@@ -54,6 +55,7 @@ public sealed class MainWindow : Form
         Icon=System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         BackColor = Color.FromArgb(13,16,22); Controls.Add(web);
         host=new WindowsHost(this);controller = new AppController(host);
+        localDiscovery = new(controller);
         bool startupDark=WindowsHost.CurrentSystemTheme()!="light";
         try {var file=Path.Combine(host.DataDirectory,"settings.json");if(new FileInfo(file).Length<=32768){using var pref=JsonDocument.Parse(File.ReadAllText(file));var theme=pref.RootElement.GetProperty("theme").GetString();if(theme=="dark"||theme=="light")startupDark=theme=="dark";}}catch{}
         BackColor=startupDark?Color.FromArgb(13,16,22):Color.FromArgb(245,247,250);web.DefaultBackgroundColor=BackColor;
@@ -121,7 +123,7 @@ public sealed class MainWindow : Form
         FormClosing += async (_,e) =>
         {
             if (closing) return;
-            e.Cancel = true; closing = true; tick.Stop();notifications.Dispose();taskbar.Dispose();
+            e.Cancel = true; closing = true; tick.Stop();localDiscovery.Dispose();notifications.Dispose();taskbar.Dispose();
             try
             {
                 if(initialization is not null)try{await initialization;}catch(Exception ex){System.Diagnostics.Debug.WriteLine(ex.Message);}
@@ -135,6 +137,7 @@ public sealed class MainWindow : Form
         if (!ready || closing || polling) return; polling = true;
         try
         {
+            localDiscovery.Refresh();
             ApplyTheme();
             var progress=controller.GetTransferNotificationSnapshot();
             notifications.Update(progress,controller.WindowsNotifications);

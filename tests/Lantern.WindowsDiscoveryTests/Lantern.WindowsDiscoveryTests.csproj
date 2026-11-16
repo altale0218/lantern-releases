@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Lantern.Windows/WindowsServiceDiscovery.cs" />
+    <Compile Include="../../src/Lantern.Windows/WindowsBonjourPublication.cs" />
+    <ProjectReference Include="../../src/Lantern.AppLogic/Lantern.AppLogic.csproj" />
+  </ItemGroup>
+</Project>

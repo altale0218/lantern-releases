@@ -2,13 +2,7 @@
 
 让分享回归设备之间。快速直连，尊重每一份隐私。
 
-局域网文件传输及设备聊天工具，提供 Windows 与 Android 客户端。此分支是从现存历史修改与双端产物恢复的 **0.7.4** 源码，Android versionCode **37**。
-
-## 0.7.4 测试版
-
-[GitHub 发行页](https://github.com/altale0218/lantern-releases/releases/tag/v0.7.4) · [Gitee 发行页](https://gitee.com/altalatic/lantern-releases/releases/tag/v0.7.4)
-
-从源码在本机完成了 Windows 和 Android 两个 Release 构建。共享界面文件与原安装包一致，Windows 的共享程序集和应用托管方法也已比对。当前源码属于恢复快照，原始安装包仍可从发行页下载。
+局域网文件传输及设备聊天工具，提供 Windows 与 Android 客户端，以及 iPhone 与 iPad 通用项目。当前源码版本 **0.7.6**，Android versionCode **39**。本仓库准备包仅含源码、项目资源与开发文档，不含已签名客户端、个人设备数据或原始开发历史。
 
 ## 功能
 
@@ -21,6 +15,8 @@
 - 已配对设备之间可进行独立双向连接测速；测试数据加密、校验且不落盘。
 - 安卓 APK 与 Windows 免安装包独立提供，Windows 内配套 APK 支持局域网 OTA。
 - 共享深浅主题、字号与界面缩放、快捷设备入口、短页面过渡。
+- iPhone 和 iPad 目标共享协议与界面资源，使用 UIKit 导航、系统文件选择器、Quick Look 与本机钥匙串。
+- 0.7.5 起四类设备使用同一 Bonjour 服务发现对方，配对需要匹配码和双方确认。发现受网络或系统授权限制时，可输入局域网 IP 连接。
 
 ## 界面演示
 
@@ -38,6 +34,7 @@
 | src/Lantern.AppLogic | 共享业务、聊天记录、设置、任务与 OTA |
 | src/Lantern.Windows | WinForms、WebView2、DPAPI、通知和文件管理 |
 | src/Lantern.Android | Android 原生入口、WebView、Keystore 与公开存储 |
+| src/Lantern.iOS | iPhone 与 iPad 通用项目，UIKit、WebKit、Bonjour 和钥匙串 |
 | ui | 共享页面、离线交互演示与项目内编写的 SVG |
 | tests | 协议、业务、存储与原生启动回归检查 |
 | tools | 无个人路径的检查、构建及更新工具 |
@@ -53,7 +50,7 @@ pwsh -File tools/Run-Checks.ps1
 pwsh -File tools/Check-PublicSource.ps1 -StrictExport
 ```
 
-完整步骤见 [构建与签名](docs/BUILD.md)、[测试](docs/TESTING.md)、[OTA 打包](docs/RELEASING.md)。请使用虚构的测试资料。
+完整步骤见 [构建与签名](docs/BUILD.md)、[测试](docs/TESTING.md)、[OTA 打包](docs/RELEASING.md)。在 Mac 上构建 iPhone/iPad 目标与真机验证的说明见 [Apple 项目文档](src/Lantern.iOS/README.md)。请使用虚构的测试资料。
 
 ui/index.html 是离线演示，示例设备、地址、指纹和文件均为虚构；预览模式不会发送文件。原生客户端从系统读取本机信息，并在运行时生成、保管自己的密钥。
 
@@ -67,7 +64,7 @@ ui/index.html 是离线演示，示例设备、地址、指纹和文件均为虚
 
 项目原创部分准备采用 [MIT](LICENSE)，署名为项目贡献者集合；公开发布前由维护者确认许可选择。第三方组件继续适用各自许可证，见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
-欢迎阅读 [贡献指南](CONTRIBUTING.md) 后提交问题和改进。源码属于恢复版本。已发布的 0.7.4 安装包和下载校验值见发行页。开发者可按构建说明使用自己的本地签名。
+欢迎阅读 [贡献指南](CONTRIBUTING.md) 后提交问题和改进。测试安装包与更新日志见 [GitHub 发行页](https://github.com/altale0218/lantern-releases/releases) 和 [Gitee 发行页](https://gitee.com/altalatic/lantern-releases/releases)。
 
 Windows 客户端不支持互联网在线更新，请前往本项目 GitHub 仓库的 Releases 页面下载最新版并按包内说明在原目录手动更新。Windows 向已认证安卓设备提供局域网 OTA 的功能保持可用。
 

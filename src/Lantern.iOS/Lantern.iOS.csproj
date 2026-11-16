@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-ios26.0</TargetFramework>
+    <SupportedOSPlatformVersion>17.0</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationId>com.lantern.transfer</ApplicationId>
+    <ApplicationDisplayVersion>0.7.6</ApplicationDisplayVersion>
+    <ApplicationVersion>39</ApplicationVersion>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    <AppIcon>AppIcon</AppIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Lantern.AppLogic/Lantern.AppLogic.csproj" />
+    <TrimmerRootAssembly Include="Lantern.AppLogic;Lantern.Core" />
+    <BundleResource Include="../../ui/**/*" LogicalName="ui/%(RecursiveDir)%(Filename)%(Extension)" />
+    <BundleResource Include="PrivacyInfo.xcprivacy" />
+  </ItemGroup>
+</Project>
