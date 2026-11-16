@@ -23,6 +23,11 @@ const server = http.createServer((request, response) => {
             for (const reducedMotion of ['no-preference', 'reduce']) {
                 const page = await browser.newPage({ reducedMotion, viewport: platform === 'Windows'
                     ? { width: 960, height: 720 } : { width: 393, height: 720 } });
+                // This test models an existing user. The first-run dialog takes focus by design.
+                await page.addInitScript(() => {
+                    localStorage.setItem('lantern.welcome.v1', 'done');
+                    localStorage.setItem('lantern.guide.v1', 'done');
+                });
                 await page.goto('http://127.0.0.1:' + server.address().port);
                 await page.evaluate(platform => {
                     window.fixture = { mode: 'native', self: { id: 'local', name: '虚构设备', platform }, settings: { theme: 'light', limitMiB: 0 }, tasks: [], devices: [], pending: [] };

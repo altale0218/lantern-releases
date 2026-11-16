@@ -728,8 +728,8 @@
     },
     {
       "path": "tests/ui/motion-disclosure.cjs",
-      "bytes": 3616,
-      "sha256": "87a5e8a358eb0b975ff7782436f54925b7905bf558608c9e77c2a4a627648dd0"
+      "bytes": 3925,
+      "sha256": "a7cc96e5c0927f6e5535bb2ba7a6997be7c24e88cfcbe8daea15f847e044f57b"
     },
     {
       "path": "tests/ui/package.json",
