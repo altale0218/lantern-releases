@@ -25,6 +25,7 @@ public sealed class MainActivity : Activity
     private AndroidServiceDiscovery? localDiscovery;
     private JsBridge? bridge;
     private bool ready;
+    private volatile bool activityStarted;
     private BrandSplash? splash;
     private bool destroyed;
     private Task? polling;
@@ -107,7 +108,7 @@ public sealed class MainActivity : Activity
     {
         Android.Util.Log.Error("Lantern.Startup", startupStage+": "+ex);
         if(destroyed||IsFinishing)return;
-        string diagnostic=$"Lantern 0.7.21\n阶段：{startupStage}\n设备：{Android.OS.Build.Manufacturer} {Android.OS.Build.Model}\nAndroid：{Android.OS.Build.VERSION.Release} / API {(int)Android.OS.Build.VERSION.SdkInt}\n错误：{ex}";
+        string diagnostic=$"Lantern 0.7.22\n阶段：{startupStage}\n设备：{Android.OS.Build.Manufacturer} {Android.OS.Build.Model}\nAndroid：{Android.OS.Build.VERSION.Release} / API {(int)Android.OS.Build.VERSION.SdkInt}\n错误：{ex}";
         var panel=new Android.Widget.LinearLayout(this){Orientation=Android.Widget.Orientation.Vertical};
         panel.SetPadding(32,64,32,32);
         var text=new Android.Widget.TextView(this){Text="启动未完成，请复制下面的诊断信息。\n\n"+diagnostic};
@@ -127,15 +128,22 @@ public sealed class MainActivity : Activity
             {
                 // Native progress does not depend on WebView readiness or page visibility.
                 if(transferNotifications is not null){transferNotifications.Update(controller.GetTransferNotificationSnapshot());host.TransferNotificationStatus=transferNotifications.Status;}
-                if(ready)
+                if(ready)(localDiscovery ??= new AndroidServiceDiscovery(this,controller)).Refresh();
+                if(ready&&activityStarted)
                 {
-                    (localDiscovery ??= new AndroidServiceDiscovery(this,controller)).Refresh();
                     ApplyTheme();
                     string json=JsonSerializer.Serialize(await controller.GetStateAsync(includeThumbnailData: false),AppController.Json);
                     if(json!=previousState)
                     {
-                        RunOnUiThread(()=>{try{if(!destroyed&&ready&&web is not null)web.EvaluateJavascript("window.lantern?.setState("+json+")",null);}catch(Exception ex){Android.Util.Log.Warn("Lantern.State",ex.ToString());}});
-                        previousState=json;
+                        RunOnUiThread(()=>{
+                            try
+                            {
+                                if(destroyed||!ready||!activityStarted||web is null)return;
+                                web.EvaluateJavascript("window.lantern?.setState("+json+")",null);
+                                previousState=json;
+                            }
+                            catch(Exception ex){Android.Util.Log.Warn("Lantern.State",ex.ToString());}
+                        });
                     }
                 }
                 await Task.Delay(600,token);
@@ -190,6 +198,16 @@ public sealed class MainActivity : Activity
             const Android.Views.SystemUiFlags lightBars=Android.Views.SystemUiFlags.LightStatusBar|Android.Views.SystemUiFlags.LightNavigationBar;
             decor.SystemUiFlags=dark?flags&~lightBars:flags|lightBars;
         }
+    }
+    protected override void OnStart()
+    {
+        base.OnStart();
+        activityStarted=true;
+    }
+    protected override void OnStop()
+    {
+        activityStarted=false;
+        base.OnStop();
     }
     protected override void OnResume()
     {

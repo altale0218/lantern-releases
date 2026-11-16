@@ -492,7 +492,10 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
             if (p.FileId.Length > 0)
             {
                 if (task.ProgressFile?.Id != p.FileId)
-                    task.ProgressFile = task.Files.Find(f => f.Id == p.FileId);
+                {
+                    string fileId = p.FileId;
+                    task.ProgressFile = task.Files.Find(f => f.Id == fileId);
+                }
                 if (task.ProgressFile is { } current) current.Completed = p.FileCompleted;
             }
             if (p.State == "completed") foreach (var file in task.Files) file.Completed = file.Size;

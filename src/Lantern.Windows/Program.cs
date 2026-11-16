@@ -142,6 +142,7 @@ public sealed class MainWindow : Form
             var progress=controller.GetTransferNotificationSnapshot();
             notifications.Update(progress,controller.WindowsNotifications);
             taskbar.Update(Handle,progress,controller.WindowsTaskbarProgress);
+            if(IsIconic(Handle))return;
             if(appliedScale!=controller.InterfaceScale)
             {
                 web.ZoomFactor=controller.InterfaceScale/100d;
@@ -194,4 +195,7 @@ public sealed class MainWindow : Form
     }
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr window,int attribute,ref int value,int size);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(IntPtr window);
 }

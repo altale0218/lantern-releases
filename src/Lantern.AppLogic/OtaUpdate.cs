@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.21";
-    public const int AndroidCode=54;
+    public const string Version="0.7.22";
+    public const int AndroidCode=55;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.21\n• GitHub 和 Gitee 的发行接口限流时，可从各自官方地址读取备用更新清单。\n• 接收文件只给图片与视频生成缩略图，缩略图失败时仍保存校验通过的文件。\n• 降低大文件进度查询和历史记录较多时的通知开销。";
+    public const string Notes="0.7.22\n• 键盘打开确认发送时聚焦设备搜索，配对已带入地址时聚焦匹配码。\n• 修复较早的弹窗关闭结果误关随后打开的发送窗口。\n• 弹窗、设置开关与任务进度提供更明确的读屏提示。\n• Windows 最小化与 Android 界面离开屏幕时减少界面刷新，继续处理发现和传输通知。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

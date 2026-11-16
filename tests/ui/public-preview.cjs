@@ -17,6 +17,7 @@ async function checkProgressHistory(p,platform){
  await route(p,'progress');
  check(await p.locator('.task-card').count()===40,platform+' progress draws the first page');
  check(await p.locator('.task-card').first().getAttribute('data-render-key')==='task-progress-active',platform+' active task first');
+ check(await p.getByRole('progressbar',{name:'虚构测试文件.txt的传输进度'}).first().getAttribute('aria-valuetext')==='加密传输中，25%',platform+' task progress announces both phase and percentage');
  check(await p.locator('[data-total-bytes]').getAttribute('data-total-bytes')==='496',platform+' totals include all file pages');
  const more=p.locator('[data-action="more-tasks"]');
  await more.focus();
@@ -33,6 +34,7 @@ async function checkProgressHistory(p,platform){
  await p.locator('[data-action="select-records"]').click();
  await p.evaluate(()=>{commands.length=0});
  await p.locator('[data-action="delete-records"]').click();
+ check(await p.getByRole('dialog',{name:'删除 40 条记录？'}).count()===1,platform+' destructive dialog announces its exact visible heading');
  await p.locator('[data-action="confirm-records"]').click();
  const deletion=await p.evaluate(()=>commands.find(command=>command.type==='delete-records'));
  check(deletion?.confirmed&&deletion.ids.length===40&&deletion.ids.every((id,index)=>id==='progress-fixture-'+(index*2)),platform+' native delete only receives the shown incoming IDs');
@@ -128,6 +130,7 @@ async function checkNavigation(p,platform){
  }
 }
 async function checkSendConfirmation(p,platform){
+ await p.keyboard.press('Tab');
  await p.evaluate(()=>{
   const devices=Array.from({length:8},(_,i)=>({...fixture.devices[0],id:'fictional-target-'+i,name:'虚构设备 '+i,conversationKey:'test-'+i}));
   devices.push({...devices[0],id:'fictional-unpaired',name:'虚构未配对设备',trusted:false});
@@ -136,7 +139,10 @@ async function checkSendConfirmation(p,platform){
   files[0]={id:'0',name:'虚构的演示文档.pptx',size:512,mime:'application/vnd.openxmlformats-officedocument.presentationml.presentation'};
   window.lantern.acceptDropped({ok:true,selection:files,selectionId:'example-selection'});
  });
- const dialog=p.getByRole('dialog',{name:'选择发送对象'}),search=dialog.getByRole('searchbox');
+ const dialog=p.getByRole('dialog',{name:'发送文件'}),search=dialog.getByRole('searchbox');
+ check(await search.evaluate(input=>input===document.activeElement),platform+' keyboard opening focuses the recipient search');
+ await p.waitForFunction(()=>window.completedPairCloses===2);
+ check(await dialog.count()===1,platform+' completing an earlier pairing close does not close the new send dialog');
  check(await dialog.locator('.selection-file').count()===24,platform+' long selections initially mount their first file page');
  await dialog.locator('.send-file-disclosure summary').click();
  await dialog.locator('[data-action="send-more-files"]').click();
@@ -165,6 +171,7 @@ async function checkSendConfirmation(p,platform){
  await send.evaluate(button=>button.dispatchEvent(new MouseEvent('click',{bubbles:true})));
  await send.waitFor({state:'visible'});
  await p.waitForFunction(()=>!document.querySelector('[data-action="send-selection"]').disabled);
+ check(await dialog.count()===1,platform+' the original modal heading names the dialog after refresh');
  check(await dialog.locator('.selection-file').count()===33,platform+' failure preserves selection and disclosed files for retry');
  check(await p.evaluate(()=>commands.filter(c=>c.type==='send').length)===1,platform+' a duplicate submission is suppressed');
  await send.click();
@@ -216,7 +223,7 @@ async function checkTouch(p,label){
 (async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});try{
  for(const platform of ['Android','Windows']){
   const p=await browser.newPage({viewport:platform==='Android'?{width:390,height:844}:{width:1260,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
-  await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);const sending=m.command.type==='send';const ok=!sending||!window.failNextSend;if(sending)window.failNextSend=false;const result={ok};if(m.command.type==='preview-selection')result.document={format:'PowerPoint',sections:Array.from({length:3},(_,i)=>({title:'幻灯片 '+(i+1),text:'虚构示例内容\n'.repeat(22)}))};if(m.command.type==='preview-thumbnails')result.thumbnails=m.command.items.map(item=>({...item,source:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII='}));if(m.id)setTimeout(()=>window.lanternNativeResult(m.id,result),sending?300:m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}});
+  await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);const sending=m.command.type==='send';const ok=!sending||!window.failNextSend;if(sending)window.failNextSend=false;const result={ok};if(m.command.type==='preview-selection')result.document={format:'PowerPoint',sections:Array.from({length:3},(_,i)=>({title:'幻灯片 '+(i+1),text:'虚构示例内容\n'.repeat(22)}))};if(m.command.type==='preview-thumbnails')result.thumbnails=m.command.items.map(item=>({...item,source:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII='}));if(m.id){const closingPair=m.command.type==='close-pairing';setTimeout(()=>{window.lanternNativeResult(m.id,result);if(closingPair)window.completedPairCloses=(window.completedPairCloses||0)+1;},sending?300:closingPair?160:m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}}});
   await p.goto('http://127.0.0.1:'+server.address().port);await p.evaluate(s=>{window.fixture=s;window.lantern.setState(s);window.lantern.setInsets({top:s.self.platform==='Android'?24:0,bottom:s.self.platform==='Android'?24:0})},fixture(platform));
   await checkNavigation(p,platform);
   await checkDiscoveredPairing(p,platform);
