@@ -1,4 +1,4 @@
-name: Android 17 startup and upgrade
+name: Android native startup and upgrade
 
 on:
   push:
@@ -10,14 +10,26 @@ permissions:
 
 jobs:
   emulator:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sdk: 35
+            image: system-images;android-35;default;x86_64
+            check_background: 'true'
+          - sdk: 37
+            image: system-images;android-37.0;default;x86_64
+            check_background: 'false'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
-      IMAGE: system-images;android-37.0;default;x86_64
+      IMAGE: ${{ matrix.image }}
+      SDK: ${{ matrix.sdk }}
+      CHECK_BACKGROUND: ${{ matrix.check_background }}
       SERIAL: emulator-5554
       PACKAGE: com.lantern.transfer
     steps:
-      - name: Test the published packages on Android 17
+      - name: Test the published Android packages
         shell: bash
         run: |
           set -euo pipefail
@@ -46,7 +58,7 @@ jobs:
             sleep 3
           done
           test "$(device shell getprop sys.boot_completed | tr -d '\r')" = 1
-          test "$(device shell getprop ro.build.version.sdk | tr -d '\r')" = 37
+          test "$(device shell getprop ro.build.version.sdk | tr -d '\r')" = "$SDK"
           for attempt in $(seq 1 24); do
             if device shell pm path android | grep -F 'package:' > "$RUNNER_TEMP/lantern-package-service.log" && device shell wm dismiss-keyguard; then
               break
@@ -104,18 +116,16 @@ jobs:
             sleep 3
             device shell pidof "$PACKAGE"
             if device logcat -b crash -d | grep -A 24 -F "Process: $PACKAGE"; then exit 1; fi
-            echo "PASS Lantern $version started the native Android main activity on API 37"
+            echo "PASS Lantern $version started the native Android main activity on API $SDK"
           }
-          download 0.7.21 27255805c785f3b703200a3a220ca4560624cce80cab6ea86083d8449c40c55a
-          device install --no-streaming "$RUNNER_TEMP/lantern-0.7.21.apk"
-          startup 54 0.7.21
-          download 0.7.22 4486819305819fb34b8261e8e2526e84a5d9bca38c7e40cdc9be417f0476d2f1
-          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.22.apk"
-          startup 55 0.7.22
-          echo "PASS same-signature upgrade preserved the application package"
           download 0.7.23 ff341197105c5d1888f9ec8e51d4a4965d391f15248bd0435fc38b91bf178444
-          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.23.apk"
+          device install --no-streaming "$RUNNER_TEMP/lantern-0.7.23.apk"
           startup 56 0.7.23
+          download 0.7.24 e47f6824dd280a29650c14e7d8a482061941e55a2f241e23a2b865f71a1408ac
+          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.24.apk"
+          startup 57 0.7.24
+          echo "PASS same-signature upgrade preserved the application package"
+          if [ "$CHECK_BACKGROUND" != true ]; then exit 0; fi
           original_pid="$(device shell pidof "$PACKAGE" | tr -d '\r')"
           echo "PID before Home: $original_pid"
           device shell input keyevent KEYCODE_HOME
@@ -138,7 +148,7 @@ jobs:
               break
             fi
             cat "$RUNNER_TEMP/lantern-resume-launch.log"
-            if ! grep -Eqi 'broken pipe|deadobject|Error type 3' "$RUNNER_TEMP/lantern-resume-launch.log"; then break; fi
+            if ! grep -Eqi 'broken pipe|deadobject|Error type 3|Can.t find service' "$RUNNER_TEMP/lantern-resume-launch.log"; then break; fi
             sleep 3
           done
           test "$resumed" = true

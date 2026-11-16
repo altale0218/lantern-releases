@@ -33,8 +33,8 @@
     },
     {
       "path": ".github/workflows/android-runtime.yml",
-      "bytes": 7993,
-      "sha256": "60522c8673c8018514a77223a21bf766af774b9c25661eb75dca0ebef86feae7"
+      "bytes": 8247,
+      "sha256": "4c0c19430d99fb2a7d55c85d97dd407d9006f792adfea012dfee4ef7ab4a9f13"
     },
     {
       "path": ".github/workflows/checks.yml",
