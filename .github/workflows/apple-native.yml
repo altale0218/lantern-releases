@@ -1,4 +1,4 @@
-name: Apple simulator build
+name: Apple simulator release smoke
 
 on:
   push:
@@ -9,114 +9,51 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  simulator:
     strategy:
       fail-fast: false
       matrix:
         include:
           - runner: macos-15-intel
             rid: iossimulator-x64
+            model: iPhone
+            type: com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro
+          - runner: macos-15-intel
+            rid: iossimulator-x64
+            model: iPad
+            type: com.apple.CoreSimulator.SimDeviceType.iPad-Air-13-inch-M3
+          - runner: macos-15
+            rid: iossimulator-arm64
+            model: iPhone
+            type: com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
+    timeout-minutes: 33
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       DOTNET_NOLOGO: '1'
       DOTNET_SDK: 10.0.300
       SIMULATOR_RID: ${{ matrix.rid }}
+      DEVICE_TYPE: ${{ matrix.type }}
+      DEVICE_MODEL: ${{ matrix.model }}
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      LANTERN_VERSION: 0.7.29
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-          ref: v0.7.26
+          ref: v0.7.29
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.300'
-      - name: Test scene-owned window storage
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          root = Path("src/Lantern.iOS")
-          def insert(name, marker, phase, placement="before"):
-              path = root / name
-              original = path.read_text()
-              assert original.count(marker) == 1, (name, phase)
-              trace = f'StartupProbe.Mark("{phase}");'
-              if placement == "before":
-                  replacement = trace + "\n        " + marker
-              else:
-                  replacement = marker + "\n        " + trace
-              path.write_text(original.replace(marker, replacement))
-          path = root / "Program.cs"
-          source = path.read_text()
-          old = "public static void Main(string[] args) => UIApplication.Main(args, null, typeof(AppDelegate));"
-          assert source.count(old) == 1
-          path.write_text(source.replace(old, """public static void Main(string[] args)
-              {
-                  StartupProbe.Mark("Main");
-                  UIApplication.Main(args, null, typeof(AppDelegate));
-              }"""))
-          source = path.read_text()
-          old = "private LanternTabs? tabs;"
-          assert source.count(old) == 1
-          source = source.replace(old, old + "\n    public override UIWindow? Window { get; set; }")
-          old = "Window = new UIWindow(windowScene) { RootViewController = tabs };\n        Window.MakeKeyAndVisible();"
-          assert source.count(old) == 1
-          source = source.replace(old, """var window = new UIWindow(windowScene);
-                  StartupProbe.Mark("Window allocated");
-                  window.RootViewController = tabs;
-                  StartupProbe.Mark("Root view controller assigned");
-                  Window = window;
-                  StartupProbe.Mark("Window stored by scene");
-                  window.MakeKeyAndVisible();""")
-          path.write_text(source)
-          for marker, phase, placement in [
-              ("if (scene is not UIWindowScene windowScene) return;", "WillConnect", "before"),
-              ("tabs = new LanternTabs();", "Tabs created", "after"),
-              ("window.MakeKeyAndVisible();", "Window ready", "after"),
-          ]:
-              insert("Program.cs", marker, phase, placement)
-          for marker, phase, placement in [
-              ("discoveryRequested = NSUserDefaults.StandardUserDefaults.BoolForKey(DiscoveryPreference);", "Tabs constructor", "before"),
-              ("controller = new AppController(host);", "Controller created", "after"),
-              ("scripts.AddScriptMessageHandler(new ScriptMessages(this), Handler);", "Bridge created", "after"),
-              ("web.ScrollView.ContentInsetAdjustmentBehavior =", "WebView created", "before"),
-              ("SetViewControllers(tabs, false);", "Phone tabs created", "after"),
-              ("AttachWebView(tabs[0]);", "WebView attached", "after"),
-              ("base.ViewDidAppear(animated);", "ViewDidAppear", "before"),
-              ("initializing = Task.Run(() =>", "System appearance read", "before"),
-              ("return controller.InitializeAsync();", "Data directory prepared", "before"),
-              ("web.LoadFileUrl(appUrl, resourceDirectory);", "WebView load requested", "after"),
-              ("if (closing || !message.FrameInfo.MainFrame", "Bridge message received", "before"),
-          ]:
-              insert("LanternTabs.cs", marker, phase, placement)
-          (root / "StartupProbe.cs").write_text("""namespace Lantern.iOS;
-          internal static class StartupProbe
-          {
-              private static readonly object Gate = new();
-              public static void Mark(string phase)
-              {
-                  try
-                  {
-                      lock (Gate)
-                          File.AppendAllText(Path.Combine(Path.GetTempPath(), "lantern-init-probe.txt"), phase + Environment.NewLine);
-                  }
-                  catch (IOException) { }
-              }
-          }
-          """)
-          PY
-      - name: Create and start a fresh iPhone simulator
+      - name: Start a new Apple simulator
         shell: bash
         run: |
           set -euo pipefail
           runtime="$(xcrun simctl list runtimes --json | python3 -c 'import json,sys; runtimes=[r for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and r["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]; print(max(runtimes,key=lambda r:tuple(map(int,r["version"].split("."))))["identifier"])')"
-          device="$(xcrun simctl create Lantern-CI com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro "$runtime")"
+          device="$(xcrun simctl create "Lantern-$DEVICE_MODEL" "$DEVICE_TYPE" "$runtime")"
           echo "LANTERN_SIMULATOR=$device" >> "$GITHUB_ENV"
           xcrun simctl boot "$device"
-      - name: Build the iPhone and iPad simulator app
+      - name: Build exact release sources
         shell: bash
         run: |
           set -euo pipefail
@@ -126,63 +63,80 @@ jobs:
           xcodebuild -version
           dotnet workload install ios --version "$DOTNET_SDK"
           dotnet build "$GITHUB_WORKSPACE/src/Lantern.iOS/Lantern.iOS.csproj" -c Debug -r "$SIMULATOR_RID" -p:EnableCodeSigning=false -p:LanternIosSdkVersion=26.2
-      - name: Check the bundled interface and metadata
-        shell: bash
-        run: |
-          set -euo pipefail
-          bundle="$(find src/Lantern.iOS/bin/Debug -type d -name '*.app' -print -quit)"
-          test -n "$bundle"
-          test -f "$bundle/ui/index.html"
-          test -f "$bundle/PrivacyInfo.xcprivacy"
-          plutil -lint -- "$bundle/Info.plist" "$bundle/PrivacyInfo.xcprivacy"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$bundle/Info.plist"
-          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$bundle/Info.plist"
-          /usr/libexec/PlistBuddy -c 'Print :NSBonjourServices' "$bundle/Info.plist"
-      - name: Read native launch phases and crash frames
-        timeout-minutes: 9
+      - name: Verify window, first screen and foreground return
+        timeout-minutes: 10
         shell: bash
         run: |
           set -euo pipefail
           device="$LANTERN_SIMULATOR"
           trap 'xcrun simctl shutdown "$device" >/dev/null 2>&1 || true' EXIT
+          cd "$GITHUB_WORKSPACE"
+          app="$(find src/Lantern.iOS/bin/Debug -type d -name '*.app' -print -quit)"
+          test -f "$app/ui/index.html"
+          test -f "$app/PrivacyInfo.xcprivacy"
+          plutil -lint -- "$app/Info.plist" "$app/PrivacyInfo.xcprivacy"
+          id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")"
+          test "$id" = com.lantern.transfer && test "$version" = "$LANTERN_VERSION"
+          while IFS= read -r -d '' native; do
+            codesign --force --sign - --timestamp=none "$native"
+          done < <(find "$app" -type f \( -name '*.dylib' -o -name '*.so' \) -print0)
+          while IFS= read -r -d '' framework; do
+            codesign --force --sign - --timestamp=none "$framework"
+          done < <(find "$app" -depth -type d -name '*.framework' -print0)
+          codesign --force --sign - --timestamp=none "$app"
+          codesign --verify --deep --strict "$app"
           xcrun simctl bootstatus "$device"
-          sign_and_launch() {
-            app="$1"
-            label="$2"
-            bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
-            while IFS= read -r -d '' native; do
-              codesign --force --sign - --timestamp=none "$native"
-            done < <(find "$app" -type f \( -name '*.dylib' -o -name '*.so' \) -print0)
-            while IFS= read -r -d '' framework; do
-              codesign --force --sign - --timestamp=none "$framework"
-            done < <(find "$app" -depth -type d -name '*.framework' -print0)
-            codesign --force --sign - --timestamp=none "$app"
-            codesign --verify --deep --strict "$app"
-            xcrun simctl install "$device" "$app"
-            xcrun simctl launch --terminate-running-process "$device" "$bundle_id" > "$RUNNER_TEMP/lantern-boot-$label.log"
-            pid="$(awk 'END {print $NF}' "$RUNNER_TEMP/lantern-boot-$label.log")"
-            [[ "$pid" =~ ^[0-9]+$ ]]
-            sleep 18
-            app_data="$(xcrun simctl get_app_container "$device" "$bundle_id" data)"
-            probe="$(find "$app_data" -name lantern-init-probe.txt -print -quit)"
-            if [[ -n "$probe" ]]; then cat "$probe"; fi
-            if kill -0 "$pid" 2>/dev/null; then
-              echo "$label process is still active"
-              return 0
-            fi
-            echo "$label process exited"
-            xcrun simctl spawn "$device" log show --last 2m --style compact \
-              --predicate "eventMessage CONTAINS[c] \"$bundle_id\"" \
-              | grep -Ei 'SIGSEGV|code sign|termination|exc_bad|exited' | tail -n 12 || true
-            report="$(find "$HOME/Library/Logs/DiagnosticReports" "$HOME/Library/Developer/CoreSimulator/Devices/$device/data/Library/Logs" -iname '*Lantern*.ips' -print 2>/dev/null | head -n 1 || true)"
-            if [[ -n "$report" ]]; then
-              python3 -c 'import json,sys; rows=open(sys.argv[1]).read().split("\n",1); info=json.loads(rows[1]); print(info.get("exception",{}).get("signal")); threads=info.get("threads",[]); i=info.get("faultingThread",0); print("\n".join(f.get("symbol","?") for f in threads[i]["frames"][:25]))' "$report" || true
-            fi
+          xcrun simctl status_bar "$device" override --time '9:41' --dataNetwork wifi --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+          xcrun simctl install "$device" "$app"
+          xcrun simctl launch --terminate-running-process "$device" "$id" | tee "$RUNNER_TEMP/lantern-launch.txt"
+          pid="$(awk 'END {print $NF}' "$RUNNER_TEMP/lantern-launch.txt")"
+          [[ "$pid" =~ ^[0-9]+$ ]]
+          data="$(xcrun simctl get_app_container "$device" "$id" data)"
+          for attempt in {1..15}; do
+            kill -0 "$pid"
+            if [[ -d "$data/Library/Application Support/Lantern" ]]; then break; fi
+            sleep 2
+          done
+          test -d "$data/Library/Application Support/Lantern"
+          echo "PASS $DEVICE_MODEL native data initialized for Lantern $version"
+          cat > "$RUNNER_TEMP/ReadLanternScreen.swift" <<'SWIFT'
+          import Foundation
+          import Vision
+
+          let screenshot = URL(fileURLWithPath: CommandLine.arguments[1])
+          let version = CommandLine.arguments[2].filter(\.isNumber)
+          let request = VNRecognizeTextRequest()
+          request.recognitionLevel = .accurate
+          let supported = try request.supportedRecognitionLanguages()
+          request.recognitionLanguages = ["zh-Hans", "en-US"].filter { supported.contains($0) }
+          let handler = VNImageRequestHandler(url: screenshot, options: [:])
+          try handler.perform([request])
+          let text = request.results?.compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ") ?? ""
+          let content = text.lowercased().filter { $0.isLetter || $0.isNumber }
+          let knownUI = text.contains("更新") || text.contains("传输") || text.contains("设置") || text.contains("开始")
+          if !content.contains("lantern") || (!content.contains(version) && !knownUI) {
+              print("Rendered Lantern interface was not recognized")
+              exit(1)
+          }
+          SWIFT
+          xcrun swiftc "$RUNNER_TEMP/ReadLanternScreen.swift" -o "$RUNNER_TEMP/read-lantern-screen"
+          check_screen() {
+            for attempt in {1..5}; do
+              kill -0 "$pid"
+              xcrun simctl io "$device" screenshot "$RUNNER_TEMP/lantern-screen.png"
+              if "$RUNNER_TEMP/read-lantern-screen" "$RUNNER_TEMP/lantern-screen.png" "$version"; then return 0; fi
+              sleep 2
+            done
             return 1
           }
-          lantern_app="$(find "$GITHUB_WORKSPACE/src/Lantern.iOS/bin/Debug" -type d -name '*.app' -print -quit)"
-          test -n "$lantern_app"
-          sign_and_launch "$lantern_app" Lantern
-          lantern_data="$(xcrun simctl get_app_container "$device" com.lantern.transfer data)"
-          test -d "$lantern_data/Library/Application Support/Lantern"
-          echo "PASS Lantern completed native data initialization"
+          check_screen
+          echo "PASS $DEVICE_MODEL rendered the Lantern web interface inside the native window"
+          xcrun simctl launch "$device" com.apple.Preferences
+          sleep 3
+          kill -0 "$pid"
+          xcrun simctl launch "$device" "$id" | tee "$RUNNER_TEMP/lantern-resume.txt"
+          resumed="$(awk 'END {print $NF}' "$RUNNER_TEMP/lantern-resume.txt")"
+          test "$resumed" = "$pid"
+          check_screen
+          echo "PASS $DEVICE_MODEL returned to the original Lantern process after leaving the app"
