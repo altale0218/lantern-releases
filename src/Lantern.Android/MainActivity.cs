@@ -108,7 +108,7 @@ public sealed class MainActivity : Activity
     {
         Android.Util.Log.Error("Lantern.Startup", startupStage+": "+ex);
         if(destroyed||IsFinishing)return;
-        string diagnostic=$"Lantern 0.7.26\n阶段：{startupStage}\n设备：{Android.OS.Build.Manufacturer} {Android.OS.Build.Model}\nAndroid：{Android.OS.Build.VERSION.Release} / API {(int)Android.OS.Build.VERSION.SdkInt}\n错误：{ex}";
+        string diagnostic=$"Lantern 0.7.27\n阶段：{startupStage}\n设备：{Android.OS.Build.Manufacturer} {Android.OS.Build.Model}\nAndroid：{Android.OS.Build.VERSION.Release} / API {(int)Android.OS.Build.VERSION.SdkInt}\n错误：{ex}";
         var panel=new Android.Widget.LinearLayout(this){Orientation=Android.Widget.Orientation.Vertical};
         panel.SetPadding(32,64,32,32);
         var text=new Android.Widget.TextView(this){Text="启动未完成，请复制下面的诊断信息。\n\n"+diagnostic};

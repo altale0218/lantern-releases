@@ -61,18 +61,26 @@ async function checkLazyThumbnails(p,platform){
  check(!(await requested()).some(item=>item.fileId==='photo-23'),platform+' offscreen thumbnails do not cross the bridge');
  await last.scrollIntoViewIfNeeded();
  await last.locator('img').waitFor();
+ await p.waitForFunction(()=>document.querySelector('[data-context-file="photo-23"] img')?.naturalWidth>0);
+ const lastUrl=await last.locator('img').getAttribute('src');
+ check(lastUrl.startsWith('blob:'),platform+' image tiles store short object URLs');
  check((await requested()).some(item=>item.fileId==='photo-23'),platform+' scrolling a thumbnail into view loads it');
  const batches=await p.evaluate(()=>commands.filter(c=>c.type==='preview-thumbnails').map(c=>c.items.length));
  check(batches.every(n=>n>0&&n<=8),platform+' thumbnail bridge requests stay bounded');
  await last.locator('[data-preview]').click();
  await p.locator('#modal img.preview-media').waitFor();
+ await p.waitForFunction(()=>document.querySelector('#modal img.preview-media')?.naturalWidth>0);
  await p.locator('#modal [data-action="close-modal"]').first().click();
  await p.evaluate(()=>{fixture.settings.thumbnails=false;window.lantern.setState(fixture)});
  check(await p.locator('.file-tile img').count()===0,platform+' disabling thumbnails clears the visible images');
+ check(await p.evaluate(url=>new Promise(resolve=>{
+  const image=new Image();image.onload=()=>resolve(false);image.onerror=()=>resolve(true);image.src=url;
+ }),lastUrl),platform+' disabling thumbnails releases previously issued URLs');
  const lastRequests=(await requested()).filter(item=>item.fileId==='photo-23').length;
  await p.evaluate(()=>{fixture.settings.thumbnails=true;window.lantern.setState(fixture)});
  await last.scrollIntoViewIfNeeded();
  await last.locator('img').waitFor();
+ check(await last.locator('img').getAttribute('src')!==lastUrl,platform+' re-enabled previews use a new URL');
  check((await requested()).filter(item=>item.fileId==='photo-23').length>lastRequests,platform+' re-enabling thumbnails fetches visible images again');
  await p.evaluate(()=>{fixture.tasks=previousThumbnailTasks;fixture.settings.thumbnails=true;window.lantern.setState(fixture)});
  await p.locator('button[data-page="transfer"]:visible').first().click();
