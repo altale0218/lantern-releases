@@ -21,7 +21,7 @@ jobs:
             image: system-images;android-37.0;default;x86_64
             check_background: 'false'
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 34
     env:
       IMAGE: ${{ matrix.image }}
       SDK: ${{ matrix.sdk }}
@@ -121,9 +121,92 @@ jobs:
           download 0.7.26 2470a8dcd267838122a5f6b2b51fadfcb9666fcc9ff45bd61548877230d16739
           device install --no-streaming "$RUNNER_TEMP/lantern-0.7.26.apk"
           startup 59 0.7.26
-          download 0.7.27 0a90665e2f741845841acf08017b595dcfd619b429f8bdda3595fba62888cd29
-          device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.27.apk"
-          startup 60 0.7.27
+          if [ "$CHECK_BACKGROUND" = true ]; then
+            device shell am force-stop "$PACKAGE"
+            device shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS
+            device shell appops set "$PACKAGE" REQUEST_INSTALL_PACKAGES allow
+            device shell am start -W -n "$PACKAGE/.StartupActivity"
+            python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+          import time
+          from xml.etree import ElementTree as ET
+
+          serial = os.environ["SERIAL"]
+          expected = "0.7.28"
+          package = os.environ["PACKAGE"]
+          def adb(*args):
+              return subprocess.run(["adb", "-s", serial, *args], text=True,
+                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=28, check=True).stdout
+          def tree():
+              try:
+                  adb("shell", "uiautomator", "dump", "/sdcard/lantern-test.xml")
+                  return list(ET.fromstring(adb("shell", "cat", "/sdcard/lantern-test.xml")).iter("node"))
+              except (subprocess.SubprocessError, ET.ParseError):
+                  return []
+          def labels(node):
+              return [node.get("text", "").strip(), node.get("content-desc", "").strip()]
+          def click_node(node):
+              left, top, right, bottom = map(int, re.findall(r"\d+", node.attrib["bounds"]))
+              adb("shell", "input", "tap", str((left + right)//2), str((top + bottom)//2))
+          def wait_for(predicate, description, seconds=70, tap=False):
+              deadline = time.monotonic() + seconds
+              recent = []
+              while time.monotonic() < deadline:
+                  recent = tree()
+                  for node in recent:
+                      if predicate(node):
+                          if tap:
+                              click_node(node)
+                          return
+                  time.sleep(1)
+              print("Visible test labels:", [text for n in recent for text in labels(n) if text][-32:])
+              raise RuntimeError(description)
+          def text_button(text, seconds=70):
+              wait_for(lambda n: text in labels(n), "Missing control: " + text, seconds, tap=True)
+          for _ in range(10):
+              nodes = tree()
+              update = next((n for n in nodes if "更新中心" in labels(n)), None)
+              if update is not None:
+                  click_node(update)
+                  break
+              action = next((n for n in nodes if "跳过引导" in labels(n)), None)
+              if action is None:
+                  action = next((n for n in nodes if "开始使用" in labels(n)), None)
+              if action is not None:
+                  click_node(action)
+              time.sleep(1)
+          else:
+              raise RuntimeError("Could not enter the update center after onboarding")
+          wait_for(lambda n: "稳定版" in labels(n) or any("稳定版" in v and "更新渠道" in v for v in labels(n)),
+              "Stable channel is not visible", tap=True)
+          text_button("测试版")
+          text_button("检查更新")
+          text_button("下载更新", 95)
+          wait_for(lambda n: "Lantern " + expected in labels(n), "Expected public test release is not visible", 60)
+          wait_for(lambda n: "安装更新" in labels(n), "Verified download was not offered for install", 150)
+          print("PASS Android app selected beta, found the server release, downloaded and verified the APK")
+          text_button("安装更新")
+          wait_for(lambda n: n.get("package", "").endswith("packageinstaller") and
+              any(s.lower() in ("update", "install") for s in labels(n)),
+              "Android system package install confirmation is not visible", 90, tap=True)
+          deadline = time.monotonic() + 90
+          while time.monotonic() < deadline:
+              if "versionCode=61 " in adb("shell", "dumpsys", "package", package):
+                  print("PASS Android system installed the user-confirmed server OTA; new versionCode is 61")
+                  break
+              time.sleep(2)
+          else:
+              raise RuntimeError("The system did not install the confirmed APK")
+          PY
+            startup 61 0.7.28
+          fi
+          if [ "$CHECK_BACKGROUND" != true ]; then
+            download 0.7.28 c888bb5ce2a6e637c28cfc0ff9320a881101502a7a2f66ef506110cf4f4b7358
+            device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.28.apk"
+            startup 61 0.7.28
+          fi
           echo "PASS same-signature upgrade preserved the application package"
           if [ "$CHECK_BACKGROUND" != true ]; then exit 0; fi
           original_pid="$(device shell pidof "$PACKAGE" | tr -d '\r')"
