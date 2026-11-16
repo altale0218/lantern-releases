@@ -55,18 +55,30 @@ public sealed class WindowsHost(Form owner) : IPlatformHost
         if (dialog.ShowDialog(owner) != DialogResult.OK) return [];
         return await PrepareFilesAsync(dialog.FileNames);
     }
-    public async Task<IReadOnlyList<PickedFile>> PrepareFilesAsync(IEnumerable<string> paths)
+    public Task<IReadOnlyList<PickedFile>> PrepareFilesAsync(IEnumerable<string> paths)
     {
         var files=paths.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        if (files.Length > Transfers.MaxFiles) throw new IOException("一次最多选择 1000 个文件");
-        var result = new List<PickedFile>();
-        foreach (string file in files)
+        return Task.Run<IReadOnlyList<PickedFile>>(() =>
         {
-            if(!File.Exists(file)||Directory.Exists(file))throw new IOException("请拖入本机文件；文件夹暂不支持");
-            var info = new FileInfo(file); string mime = Mime(info.Extension);
-            result.Add(new(new(info.Name,info.Length,mime,()=>Task.FromResult<Stream>(new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.Read,1024*1024,FileOptions.Asynchronous|FileOptions.SequentialScan))),await ThumbnailAsync(file,mime),info.FullName));
-        }
-        return result;
+            if (files.Length > Transfers.MaxFiles) throw new IOException("一次最多选择 1000 个文件");
+            var result = files.Select(file =>
+            {
+                if (!File.Exists(file) || Directory.Exists(file)) throw new IOException("请拖入本机文件；文件夹暂不支持");
+                var info = new FileInfo(file);
+                var source = new SourceFile(info.Name, info.Length, Mime(info.Extension), () =>
+                    Task.FromResult<Stream>(new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024,
+                        FileOptions.Asynchronous | FileOptions.SequentialScan)));
+                return new PickedFile(source, null, info.FullName);
+            }).ToArray();
+
+            var media = Enumerable.Range(0, result.Length).Where(index => HasThumbnail(result[index].Source.Mime));
+            Parallel.ForEach(media, new ParallelOptions { MaxDegreeOfParallelism = 4 }, index =>
+            {
+                var item = result[index];
+                result[index] = item with { Preview = ReadThumbnail(item.LocalPath!) };
+            });
+            return result;
+        });
     }
     public Task<IReadOnlyList<PickedFile>> RestoreSourcesAsync(IReadOnlyList<string> paths)=>PrepareFilesAsync(paths);
     public Task OpenFolderAsync(string folder)
@@ -114,9 +126,14 @@ public sealed class WindowsHost(Form owner) : IPlatformHost
     {
         string full=ValidateReceivedFile(file);File.Delete(full);return Task.CompletedTask;
     }
-    public Task<string?> ThumbnailAsync(string file,string mime) => Task.Run<string?>(()=>
+    public Task<string?> ThumbnailAsync(string file,string mime) =>
+        HasThumbnail(mime) ? Task.Run(() => ReadThumbnail(file)) : Task.FromResult<string?>(null);
+
+    private static bool HasThumbnail(string mime) =>
+        mime.StartsWith("image/", StringComparison.Ordinal) || mime.StartsWith("video/", StringComparison.Ordinal);
+
+    private static string? ReadThumbnail(string file)
     {
-        if (!mime.StartsWith("image/") && !mime.StartsWith("video/")) return null;
         IntPtr handle = IntPtr.Zero; IShellItemImageFactory? factory = null;
         try
         {
@@ -129,7 +146,7 @@ public sealed class WindowsHost(Form owner) : IPlatformHost
         }
         catch { return null; }
         finally { if (handle != IntPtr.Zero) DeleteObject(handle); if(factory is not null) Marshal.ReleaseComObject(factory); }
-    });
+    }
     private static string Mime(string ext) => ext.ToLowerInvariant() switch
     { ".jpg" or ".jpeg"=>"image/jpeg", ".png"=>"image/png", ".webp"=>"image/webp", ".gif"=>"image/gif", ".mp4"=>"video/mp4", ".mov"=>"video/quicktime", ".mkv"=>"video/x-matroska", ".docx"=>"application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".pptx"=>"application/vnd.openxmlformats-officedocument.presentationml.presentation", ".xlsx"=>"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".doc"=>"application/msword", ".ppt"=>"application/vnd.ms-powerpoint", ".xls"=>"application/vnd.ms-excel", ".csv"=>"text/csv", ".md"=>"text/markdown", ".pdf"=>"application/pdf", ".zip"=>"application/zip", _=>"application/octet-stream" };
     [StructLayout(LayoutKind.Sequential)] private struct SIZE(int cx,int cy) { public int Cx=cx; public int Cy=cy; }

@@ -118,21 +118,42 @@ public sealed partial class AndroidHost(Activity activity) : IPlatformHost
         if(data.ClipData is {} clips)for(int i=0;i<clips.ItemCount;i++){if(clips.GetItemAt(i)?.Uri is {} uri)uris.Add(uri);}
         else if(data.Data is {} uri)uris.Add(uri);
         if(uris.Count>Transfers.MaxFiles)throw new IOException("一次最多选择 1000 个文件");
-        var result=new List<PickedFile>();
-        foreach(var uri in uris)
+        return await Task.Run<IReadOnlyList<PickedFile>>(() =>
         {
-            using var cursor=activity.ContentResolver!.Query(uri,[IOpenableColumns.DisplayName,IOpenableColumns.Size],null,null,null);
-            if(cursor is null||!cursor.MoveToFirst())continue;
-            string name=cursor.GetString(0)??"file";if(cursor.IsNull(1))throw new IOException("请先将未知大小的云文件保存到本机");
-            long size=cursor.GetLong(1);string mime=activity.ContentResolver.GetType(uri)??"application/octet-stream";
-            result.Add(new(new(name,size,mime,()=>Task.FromResult(activity.ContentResolver.OpenInputStream(uri)??throw new IOException("无法打开文件"))),await ThumbUriAsync(uri,mime)));
-        }
-        return result;
+            var selected = new List<(Uri Uri, PickedFile File)>();
+            foreach (var uri in uris)
+            {
+                using var cursor = activity.ContentResolver!.Query(uri, [IOpenableColumns.DisplayName, IOpenableColumns.Size], null, null, null);
+                if (cursor is null || !cursor.MoveToFirst()) continue;
+                string name = cursor.GetString(0) ?? "file";
+                if (cursor.IsNull(1)) throw new IOException("请先将未知大小的云文件保存到本机");
+                long size = cursor.GetLong(1);
+                string mime = activity.ContentResolver.GetType(uri) ?? "application/octet-stream";
+                var source = new SourceFile(name, size, mime, () =>
+                    Task.FromResult(activity.ContentResolver.OpenInputStream(uri) ?? throw new IOException("无法打开文件")));
+                selected.Add((uri, new PickedFile(source, null)));
+            }
+
+            var result = selected.Select(entry => entry.File).ToArray();
+            var media = Enumerable.Range(0, result.Length).Where(index => HasThumbnail(result[index].Source.Mime));
+            Parallel.ForEach(media, new ParallelOptions { MaxDegreeOfParallelism = 2 }, index =>
+            {
+                var item = result[index];
+                result[index] = item with { Preview = ReadThumbnailUri(selected[index].Uri, item.Source.Mime) };
+            });
+            return result;
+        });
     }
     public void CompletePick(int code,Result result,Intent? data){if(code==701)picker?.TrySetResult(result==Result.Ok?data:null);if(code==702)folderPicker?.TrySetResult(result==Result.Ok?data:null);}
     public void CancelPick(){picker?.TrySetResult(null);folderPicker?.TrySetResult(null);}
-    public Task<string?> ThumbnailAsync(string file,string mime)=>ThumbUriAsync(Uri.FromFile(new Java.IO.File(file))!,mime);
-    private Task<string?> ThumbUriAsync(Uri uri,string mime)=>Task.Run<string?>(()=>
+    public Task<string?> ThumbnailAsync(string file,string mime) => HasThumbnail(mime)
+        ? Task.Run(() => ReadThumbnailUri(Uri.FromFile(new Java.IO.File(file))!, mime))
+        : Task.FromResult<string?>(null);
+
+    private static bool HasThumbnail(string mime) =>
+        mime.StartsWith("image/", StringComparison.Ordinal) || mime.StartsWith("video/", StringComparison.Ordinal);
+
+    private string? ReadThumbnailUri(Uri uri,string mime)
     {
         Bitmap? bitmap=null;
         try
@@ -170,7 +191,7 @@ public sealed partial class AndroidHost(Activity activity) : IPlatformHost
         }
         catch{return null;}
         finally{bitmap?.Dispose();}
-    });
+    }
     public Task OpenFolderAsync(string folder)
     {
         if(folder.StartsWith("lantern-public:",StringComparison.Ordinal)){storage.Open(folder);return Task.CompletedTask;}
