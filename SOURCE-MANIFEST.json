@@ -1,93 +1,761 @@
 {
+  "kind": "reviewed-reconstructed-source",
   "version": "0.7.4",
-  "scope": "partial-ui-source",
+  "platforms": [
+    "Android",
+    "Windows"
+  ],
+  "includesOriginalSigningMaterial": false,
+  "includesRuntimeData": false,
   "files": [
     {
+      "path": ".editorconfig",
+      "bytes": 159,
+      "sha256": "3e6bb33e6af4fa28755d87731d92c455c63fc237f653ae7148a8384f7d561eff"
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 112,
+      "sha256": "575d09ca01074f96596065afabf50dc61f82e89ad04127a9a3388296606bf4d8"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.md",
+      "bytes": 470,
+      "sha256": "13097d538085959889063ea591fda5b00122fb974acc1c4951d7a76552d6a77d"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.md",
+      "bytes": 273,
+      "sha256": "b5cfbb945138488e364b9dd92baf71b181e33d2c3fb3c82f778f6235651670c7"
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "bytes": 247,
+      "sha256": "1c19646f05dbe1d951df0142a54399f4b7d3398e5603dd2cc14272df19c5d99a"
+    },
+    {
+      "path": ".github/workflows/checks.yml",
+      "bytes": 1558,
+      "sha256": "aedccba898c5fe51ea23bc23412ff73d8e9849febc9920669e7d3ea43d371d1d"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 916,
+      "sha256": "bf0dcec74d2bf5bc6a8a538378b87bf029000b5feb18ffc96f2084bdffdb1628"
+    },
+    {
       "path": "CHANGELOG.md",
-      "sha256": "4840e015624a40093da5a702a90cb63ba78380c744ed2e406558c1a00fe0f9f3"
+      "bytes": 6119,
+      "sha256": "b822f7440593f92a7bf743811041c41d18b3c5ed404d5c08b1223dadf206dc88"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 1054,
+      "sha256": "c18461df1a29beb7c7b88583c88fd79694062b51f6f2abe1ee509d722feec570"
+    },
+    {
+      "path": "Directory.Build.props",
+      "bytes": 353,
+      "sha256": "5d4c35dc2600ce444379d7a13edd4eea3a90a5c99bf4e4ee53c3068436bc86c1"
+    },
+    {
+      "path": "docs/BUILD.md",
+      "bytes": 2464,
+      "sha256": "cbad5123fc84f8ea7a2cef9c220a5bd6355ee1fd6e8a3cadf0df46ea8895aef1"
+    },
+    {
+      "path": "docs/images/android-chat-dark.png",
+      "bytes": 31635,
+      "sha256": "133affbe0065cec37e76ee7f790b5fa765be6e755d90c68d916cc23f03ada8f9"
+    },
+    {
+      "path": "docs/images/android-chat-light.png",
+      "bytes": 30959,
+      "sha256": "c9919a2b8a69b9ffb9b994164615e8786a5e300144a77ddeeb0f4051f3bd06c9"
+    },
+    {
+      "path": "docs/images/android-dark.png",
+      "bytes": 46007,
+      "sha256": "07d29b97068e6d3f876ee62aa57e42dad42a7ed151c0cea5c9b5a02812a484ff"
+    },
+    {
+      "path": "docs/images/android-light.png",
+      "bytes": 45482,
+      "sha256": "404785a102914abfd417b06995fc540c639d6e568d92108715f964cd69961633"
+    },
+    {
+      "path": "docs/images/android-speed-light.png",
+      "bytes": 54215,
+      "sha256": "0d9128424341e8454771cb29f8f41e4eaf9cffb473d22653c61a7be7f9b66c47"
+    },
+    {
+      "path": "docs/images/windows-dark.png",
+      "bytes": 79920,
+      "sha256": "70d2075e52927d7fbe81cb2fc048666b9f50e572fc9f5f7f69796f622fc2fbf3"
+    },
+    {
+      "path": "docs/images/windows-light.png",
+      "bytes": 125146,
+      "sha256": "537610a609bec88b194a1a56da17e203c646635a86439898e32748e5d4c4d116"
+    },
+    {
+      "path": "docs/images/windows-speed-dark.png",
+      "bytes": 60339,
+      "sha256": "7b15fa118a6ab30115a43f46cbd4224a06d28a91ff5d9c32270dd50446a9f926"
+    },
+    {
+      "path": "docs/PUBLISHING.md",
+      "bytes": 2612,
+      "sha256": "a2518ad6a01f721c7a1e9bf5b2bbe8d0c0da13a1903fbb63bd0f064b92d8c1c3"
+    },
+    {
+      "path": "docs/RELEASING.md",
+      "bytes": 2318,
+      "sha256": "e472769e40de9dcd37c6082952f416c017d77ba6f9f154c9773e7556a66d379e"
+    },
+    {
+      "path": "docs/TESTING.md",
+      "bytes": 2759,
+      "sha256": "235ac0c86beda0dcc00608f48bca36e0c38808e540eb1232ecb3cb1f7c3c894a"
+    },
+    {
+      "path": "global.json",
+      "bytes": 85,
+      "sha256": "a63b77552b51f013c7db69270edd0055d64edbe77cdd5b0b9584dfdeefac10c5"
+    },
+    {
+      "path": "Lantern.slnx",
+      "bytes": 1261,
+      "sha256": "2c2f62dc8754641463af021b77af027d45517b198c75aacd737ae7964c869d15"
     },
     {
       "path": "LICENSE",
+      "bytes": 1077,
       "sha256": "dcc2943ddddf5269bfcfc4fd6df6c587cad39909f6dbd5a7beff627e802d7920"
     },
     {
       "path": "licenses/BouncyCastle-LICENSE.md",
+      "bytes": 1133,
       "sha256": "afc1653b666b64a2386b7b9b914406904f45c20b9571765d8c1121b513313179"
     },
     {
       "path": "licenses/Dotnet-LICENSE.txt",
+      "bytes": 1139,
       "sha256": "d7a68596ab69b06f51ca278a6545148e4269a9381c26d597c13df5d88e08cf5b"
     },
     {
       "path": "licenses/Dotnet-THIRD-PARTY-NOTICES.txt",
+      "bytes": 68911,
       "sha256": "19c19dcac9f3ee6302cfbc6745bb8e79f08efc4c933eb8dc5509bf14b88347ec"
     },
     {
       "path": "licenses/Playwright-LICENSE.txt",
+      "bytes": 11601,
       "sha256": "45873d00a0dd243596deb4aa23b2493b3d1f0671921bf2538ea431d7380220eb"
     },
     {
       "path": "licenses/WebView2-LICENSE.txt",
+      "bytes": 1487,
       "sha256": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55"
     },
     {
       "path": "licenses/WebView2-NOTICE.txt",
+      "bytes": 3894,
       "sha256": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
     },
     {
+      "path": "NuGet.Config",
+      "bytes": 198,
+      "sha256": "593813d027ae058c94c59138c6618d9b3526a825d91db6e0e3bec2c5d60c07fc"
+    },
+    {
+      "path": "PRIVACY_REVIEW.md",
+      "bytes": 3733,
+      "sha256": "5c629e58ddc09526755b8d35dfb815c0c24094af2ca54285138a2cf1099ae3ea"
+    },
+    {
+      "path": "PRIVACY.md",
+      "bytes": 1575,
+      "sha256": "401dd39dcf2c64808708fb0ac25317448536771566377210fb1094aa6fa59608"
+    },
+    {
       "path": "README.md",
-      "sha256": "8bdab4e8559d495aab966cc5939231c4af3d289472aa1b6e3410206d0c3d84da"
+      "bytes": 5402,
+      "sha256": "2da38f337a1f47f76c644b17a6bfef66bd2de353a1dd0100d9dc8291e438ef23"
+    },
+    {
+      "path": "SECURITY.md",
+      "bytes": 9279,
+      "sha256": "edc326c23c5413ffb2d9cd9e85c72132f903ceb2454d7f14ed3389410f9b6b1e"
+    },
+    {
+      "path": "src/Lantern.Android/AndroidHost.cs",
+      "bytes": 13689,
+      "sha256": "c837d8687f3610b5eaa2468f265b5b04e8ec3de5e1d84c8a4bd99c88b00be98d"
+    },
+    {
+      "path": "src/Lantern.Android/AndroidUpdate.cs",
+      "bytes": 2754,
+      "sha256": "6ac59f564370a077d93b8a2f30dbb848635e163870bc3139d515360e73322a9a"
+    },
+    {
+      "path": "src/Lantern.Android/BrandSplash.cs",
+      "bytes": 1431,
+      "sha256": "57e5d50bea631d154e8c08f3ab916988236bd37e770c75a44a0980c29b67560e"
+    },
+    {
+      "path": "src/Lantern.Android/Lantern.Android.csproj",
+      "bytes": 2124,
+      "sha256": "08e8e20ee683876f335a0cff789d57153d443e97d7c0261b89c78dbbd023aa23"
+    },
+    {
+      "path": "src/Lantern.Android/MainActivity.cs",
+      "bytes": 19700,
+      "sha256": "1779734a8bf593fb720f33c2f48bead321236545245f7119ce2bb81e5e14131c"
+    },
+    {
+      "path": "src/Lantern.Android/Native/BrandSplashView.java",
+      "bytes": 1562,
+      "sha256": "9c53ce34f4bb83f7461b1c79dfcb67fea88ea2a8dfa33d4ebe10a1e082233575"
+    },
+    {
+      "path": "src/Lantern.Android/Native/CrashCaptureApplication.java",
+      "bytes": 2561,
+      "sha256": "fd7976399edf038a3b202697114bea284cb88f3c2a1fd9719ac2b32febe3ce76"
+    },
+    {
+      "path": "src/Lantern.Android/Native/CrashJournal.java",
+      "bytes": 2074,
+      "sha256": "62ac2c354741fe149fc9efa97378738f37b0fb2a0e9618167ac7e76039d3b9a8"
+    },
+    {
+      "path": "src/Lantern.Android/Native/StartupActivity.java",
+      "bytes": 9141,
+      "sha256": "5223f4af17cad1fd66312ba3ae655d959792ec7f714515771600d10513620e66"
+    },
+    {
+      "path": "src/Lantern.Android/Native/StartupManifestOverlay.xml",
+      "bytes": 343,
+      "sha256": "46a438d965a32093c3c06af58725a978b7f4122a73d86518d4272ca6fec46987"
+    },
+    {
+      "path": "src/Lantern.Android/Native/StartupWindowStyle.java",
+      "bytes": 2533,
+      "sha256": "cfaec5d69b310a08887b51e3b835ec2ecb97dac6ffc08466eee09634f0901ba1"
+    },
+    {
+      "path": "src/Lantern.Android/Properties/AndroidManifest.xml",
+      "bytes": 1560,
+      "sha256": "88891c1302ad7f6ceff953274ea3d9735155ff89791df545a89ec80fd33725f4"
+    },
+    {
+      "path": "src/Lantern.Android/PublicReceivedStorage.cs",
+      "bytes": 9678,
+      "sha256": "a3bdf5973d03ebd1137e135e3a3f0d4941ee479b2a6b67bfc78eac8214724b6f"
+    },
+    {
+      "path": "src/Lantern.Android/ReceivedFiles.cs",
+      "bytes": 2766,
+      "sha256": "b4b34550adcb941c41bd7460d9d6deca991770e61999baac2795c42a47a43540"
+    },
+    {
+      "path": "src/Lantern.Android/Resources/drawable/ic_transfer_notification.xml",
+      "bytes": 315,
+      "sha256": "2176f2d1d174e477ba9663e89a55619eb888ba35e0e583fc0394cf24f505e91a"
+    },
+    {
+      "path": "src/Lantern.Android/Resources/drawable/launcher_foreground.xml",
+      "bytes": 321,
+      "sha256": "c97e8b815381395dfab2898ac7ee7ae28335fb8bde5966b5b8484bb0711b3cac"
+    },
+    {
+      "path": "src/Lantern.Android/Resources/mipmap-anydpi-v26/ic_launcher.xml",
+      "bytes": 260,
+      "sha256": "ede4319649c8fa3db3bf8fabb1fdf05116883c6fb89f9e19e19e9f983ca1fa4b"
+    },
+    {
+      "path": "src/Lantern.Android/Resources/mipmap-anydpi-v33/ic_launcher.xml",
+      "bytes": 326,
+      "sha256": "64e9203acf5596808b94f27d4d02f7ecfe1058c4a35e49eada3a5672c802d8dd"
+    },
+    {
+      "path": "src/Lantern.Android/Resources/values-night/startup.xml",
+      "bytes": 72,
+      "sha256": "e0d693c0765807ab749a0edf09d6d6d4cf41f950e2053079829414ca9b10ae1a"
+    },
+    {
+      "path": "src/Lantern.Android/Resources/values/launcher_colors.xml",
+      "bytes": 112,
+      "sha256": "b231bdcff360675b7d734aad13b6a5a5caf87fcb845789810ad0b7fdda1239c5"
+    },
+    {
+      "path": "src/Lantern.Android/Resources/values/startup.xml",
+      "bytes": 349,
+      "sha256": "115daa724a4acf373ec53fa54febb7a86dcf7bbb16f36684c101e70040290add"
+    },
+    {
+      "path": "src/Lantern.Android/TransferNotifications.cs",
+      "bytes": 10432,
+      "sha256": "2c305633276a3de3219e4089e319d6fa6036e30984090b86e0f423527e5cc3a3"
+    },
+    {
+      "path": "src/Lantern.AppLogic/AppBrand.cs",
+      "bytes": 509,
+      "sha256": "8e30772ae75a6ba68c80709d2d10620b5ace951ae2aa2dc5099aa7ef91628485"
+    },
+    {
+      "path": "src/Lantern.AppLogic/AppController.cs",
+      "bytes": 41743,
+      "sha256": "2fcbc448f6b6c1bddd8f4c408f607eeae8d3dada5ade7237b8cdae94ec351c93"
+    },
+    {
+      "path": "src/Lantern.AppLogic/Chat.cs",
+      "bytes": 9158,
+      "sha256": "f55df60e5894e64f3d66b17ad3ba3b2028102f8bfddce8678618f366f0f5c2f2"
+    },
+    {
+      "path": "src/Lantern.AppLogic/DocumentPreview.cs",
+      "bytes": 13179,
+      "sha256": "b29678d79327d197d3be4fcff037b31d0a659fc07d0abb725e7d44bcd7742f9e"
+    },
+    {
+      "path": "src/Lantern.AppLogic/Lantern.AppLogic.csproj",
+      "bytes": 278,
+      "sha256": "e5d2d31b8c54b781fae9ee14a5bdfaf690202ba8f9f6b558d6232ef47f8b88aa"
+    },
+    {
+      "path": "src/Lantern.AppLogic/MultiSend.cs",
+      "bytes": 4080,
+      "sha256": "e0607448304089fcc031641618efa1b3dcd46408765f3b8af7ced3ab9c5597ab"
+    },
+    {
+      "path": "src/Lantern.AppLogic/OtaUpdate.cs",
+      "bytes": 15147,
+      "sha256": "29e84370884078f006a32f6c2958bfddba13f8fe64b5054fe6d39fe2bb79bcee"
+    },
+    {
+      "path": "src/Lantern.AppLogic/Pairing.cs",
+      "bytes": 3895,
+      "sha256": "95679cbb0d0d0271a3284399c43108dec3dec3ab081ebdc8b62656ea44c63109"
+    },
+    {
+      "path": "src/Lantern.AppLogic/PreviewCommands.cs",
+      "bytes": 2976,
+      "sha256": "3a4033a20b3ca9750043b19d3e9fca399e0597032fee7adff059608308dc3569"
+    },
+    {
+      "path": "src/Lantern.AppLogic/SpeedTest.cs",
+      "bytes": 7325,
+      "sha256": "0b80e2ed0b7721760bcb463796a1280b77521a1ec40705ea832e8bbaeee3b21b"
+    },
+    {
+      "path": "src/Lantern.AppLogic/TransferNotification.cs",
+      "bytes": 5804,
+      "sha256": "c549ac1ba514a362c348d1a1596deacac247573f3847b3d0dfa373af43dd8625"
+    },
+    {
+      "path": "src/Lantern.Core/Handshake.cs",
+      "bytes": 13091,
+      "sha256": "6f0008838f749a614854cc0039f760ef95ac91ed256dc55fd757bcb9dc1b94fe"
+    },
+    {
+      "path": "src/Lantern.Core/LanDiscovery.cs",
+      "bytes": 7028,
+      "sha256": "7137f997279f8a9a05d820a5831987a85553bf915b2f650559d828d05b4d966b"
+    },
+    {
+      "path": "src/Lantern.Core/LanService.cs",
+      "bytes": 13249,
+      "sha256": "1673baebb205c0b73004e461d6d63d7fdd4ab1b382f1e3fdad9a473dc0ec5549"
+    },
+    {
+      "path": "src/Lantern.Core/Lantern.Core.csproj",
+      "bytes": 335,
+      "sha256": "02a8a05378b6b148a9ac3d0513cdd24bf7cb86e862fc07ea250a916b4c6ffc6b"
+    },
+    {
+      "path": "src/Lantern.Core/Models.cs",
+      "bytes": 3135,
+      "sha256": "1ecf4b9f0e8a9b30c166480dcf742daf1f89ce0589a6de2e88eff7ac73982b8c"
+    },
+    {
+      "path": "src/Lantern.Core/PairingWindow.cs",
+      "bytes": 1651,
+      "sha256": "3d8bbbe6aa6532e93112350469fe33a5ea7c8f5e7e88df8190acf18436eba5be"
+    },
+    {
+      "path": "src/Lantern.Core/SpeedTests.cs",
+      "bytes": 8398,
+      "sha256": "ce0aeaea00ae61e1255d5026dd836883e0d3def88fe95a6bb75238ab26c03379"
+    },
+    {
+      "path": "src/Lantern.Core/Transfers.cs",
+      "bytes": 10889,
+      "sha256": "9861b8395d3dafc81fc2d2748b44f5b0fe8ba2d55ad23253a7d862469a839483"
+    },
+    {
+      "path": "src/Lantern.Core/Wire.cs",
+      "bytes": 7134,
+      "sha256": "d764e024b872c591bcc0a876ef185c36337aee97d7c96f8aea556f6d52dffa46"
+    },
+    {
+      "path": "src/Lantern.Windows/app.manifest",
+      "bytes": 686,
+      "sha256": "52111e82e4924a50f8fcfa9d769421770a6062fa0bb5da38afc6dc2890eeb5fc"
+    },
+    {
+      "path": "src/Lantern.Windows/Lantern.Windows.csproj",
+      "bytes": 1528,
+      "sha256": "973ab04183f99c1b3eaadf95855058266ae3997a8a90b790da1ba92af15119e7"
+    },
+    {
+      "path": "src/Lantern.Windows/Program.cs",
+      "bytes": 11331,
+      "sha256": "7ce072c4fb26e34dffa4ac5c0230ca5587447280a303fb6b04576ec25e21729d"
+    },
+    {
+      "path": "src/Lantern.Windows/Resources/lantern.ico",
+      "bytes": 5361,
+      "sha256": "e32a774a04c240721e0bc846a94124e4f55ec74f022c92234f6c276a29711b0c"
+    },
+    {
+      "path": "src/Lantern.Windows/TaskbarProgress.cs",
+      "bytes": 3493,
+      "sha256": "4217ff49d413e72f4e79f680568377297642d14ce27888839cc1f9dcf861eb3a"
+    },
+    {
+      "path": "src/Lantern.Windows/WindowsHost.cs",
+      "bytes": 10650,
+      "sha256": "7bdde5deefd5c94ccb77c8944cdd17936d4d45f398fbab1c7d68e9ab529c1ba6"
+    },
+    {
+      "path": "src/Lantern.Windows/WindowsReceiveStorage.cs",
+      "bytes": 5800,
+      "sha256": "a4e275f456204bac506c4b175c244608f8598a0ddc8c701df457d5b8b71bf18c"
+    },
+    {
+      "path": "src/Lantern.Windows/WindowsTransferNotifications.cs",
+      "bytes": 1748,
+      "sha256": "ad097c703079df9b5cbd9fef730bf47a1cb2048d05130c600360579694e6cecc"
+    },
+    {
+      "path": "src/Lantern.Windows/WindowsUpdateStore.cs",
+      "bytes": 1737,
+      "sha256": "356a9d975bb0ee0a4a7e720e1ef416aeda0f441675710ef29cea7f4b386b5c9e"
+    },
+    {
+      "path": "tests/Lantern.BulkTests/Lantern.BulkTests.csproj",
+      "bytes": 315,
+      "sha256": "8aada795341608a6d265e7be0a58b541a15fc3160df516ddd922a96402fe03b3"
+    },
+    {
+      "path": "tests/Lantern.BulkTests/Program.cs",
+      "bytes": 9005,
+      "sha256": "f60046ca4d9e5c7c34b709afba5fe1c069f4c8fcab506a719f0ade0bf13ca088"
+    },
+    {
+      "path": "tests/Lantern.ChatTests/Lantern.ChatTests.csproj",
+      "bytes": 322,
+      "sha256": "083df6d0df5ae77e4628115f89c083f373366a4e934ef1de0270db8d9b8279be"
+    },
+    {
+      "path": "tests/Lantern.ChatTests/Program.cs",
+      "bytes": 12130,
+      "sha256": "f41879610836483607b7eb0c9d252be63e1d7067fa6fe3b4574953c5ab31bead"
+    },
+    {
+      "path": "tests/Lantern.FanoutTests/Lantern.FanoutTests.csproj",
+      "bytes": 315,
+      "sha256": "8aada795341608a6d265e7be0a58b541a15fc3160df516ddd922a96402fe03b3"
+    },
+    {
+      "path": "tests/Lantern.FanoutTests/Program.cs",
+      "bytes": 7261,
+      "sha256": "45ec2048055ac366f8eb316e8348afc58adfd76fb60f3ec1596e74fe139f6419"
+    },
+    {
+      "path": "tests/Lantern.NetworkStressTests/Lantern.NetworkStressTests.csproj",
+      "bytes": 307,
+      "sha256": "4739aa91cd3dd699f10c9676c055df3b5474ae6f261880a8ece3be6a1800b51f"
+    },
+    {
+      "path": "tests/Lantern.NetworkStressTests/Program.cs",
+      "bytes": 5039,
+      "sha256": "33bc233e32ce6676ba09e42ae641ae83b2a0c58be9f18889233b66c24110f62c"
+    },
+    {
+      "path": "tests/Lantern.NotificationTests/Lantern.NotificationTests.csproj",
+      "bytes": 322,
+      "sha256": "083df6d0df5ae77e4628115f89c083f373366a4e934ef1de0270db8d9b8279be"
+    },
+    {
+      "path": "tests/Lantern.NotificationTests/Program.cs",
+      "bytes": 4205,
+      "sha256": "303e367627597c53594aa302b7406a9d486580e561aef08390841f9397246cca"
+    },
+    {
+      "path": "tests/Lantern.OtaTests/Lantern.OtaTests.csproj",
+      "bytes": 414,
+      "sha256": "ed7537bf570aa637d5aca725abe40cc9830e555b886f4cc176d1d0595f3480bb"
+    },
+    {
+      "path": "tests/Lantern.OtaTests/PreferenceChecks.cs",
+      "bytes": 3208,
+      "sha256": "1caa84cba6eff1f53022f780835c13db95f244b17ebd353a175626adee9205c8"
+    },
+    {
+      "path": "tests/Lantern.OtaTests/Program.cs",
+      "bytes": 9814,
+      "sha256": "58c6dbc65e866d4d9ca13bb4bbd944d34b5e1e93814c8ca3c626cc159198ae38"
+    },
+    {
+      "path": "tests/Lantern.OtaTests/StartupChecks.cs",
+      "bytes": 6208,
+      "sha256": "b25af515bd998b8c6500c51986251e05f90ef76bdb6da91d71682ea40b9d9ed4"
+    },
+    {
+      "path": "tests/Lantern.PairingTests/Lantern.PairingTests.csproj",
+      "bytes": 322,
+      "sha256": "083df6d0df5ae77e4628115f89c083f373366a4e934ef1de0270db8d9b8279be"
+    },
+    {
+      "path": "tests/Lantern.PairingTests/Program.cs",
+      "bytes": 18771,
+      "sha256": "5be44233f6c136bf29249d3b9b691589a08756b3c9bdb3f02e58269430eaa874"
+    },
+    {
+      "path": "tests/Lantern.RetryTests/Lantern.RetryTests.csproj",
+      "bytes": 315,
+      "sha256": "8aada795341608a6d265e7be0a58b541a15fc3160df516ddd922a96402fe03b3"
+    },
+    {
+      "path": "tests/Lantern.RetryTests/Program.cs",
+      "bytes": 4496,
+      "sha256": "d6a28688885cb4f864ae526ada6170b8dde5b22011650d4a0eed3d6b07e7b0c5"
+    },
+    {
+      "path": "tests/Lantern.SecurityTests/Lantern.SecurityTests.csproj",
+      "bytes": 314,
+      "sha256": "ca4e615f9ce8eeb3ccc5d4c9c9ef6dd8e6535e7555a70462a5c0268461bc0b85"
+    },
+    {
+      "path": "tests/Lantern.SecurityTests/NativePeer.cs",
+      "bytes": 1751,
+      "sha256": "2b7bfa50f20ed1b3d920c221f4b478b8e0c644ed349c6d7afa50b2a477adbf30"
+    },
+    {
+      "path": "tests/Lantern.SecurityTests/Program.cs",
+      "bytes": 20488,
+      "sha256": "1aea16f6b5e6164c2b9b78a6a39f4707f726a3bce43ad45e1f83610e3cdbd7b9"
+    },
+    {
+      "path": "tests/Lantern.SoakTests/Lantern.SoakTests.csproj",
+      "bytes": 322,
+      "sha256": "083df6d0df5ae77e4628115f89c083f373366a4e934ef1de0270db8d9b8279be"
+    },
+    {
+      "path": "tests/Lantern.SoakTests/Program.cs",
+      "bytes": 6973,
+      "sha256": "5bfd9a1e95755742641182b5ea8eb9ccfc8200eda27e5689f2eba257d5868897"
+    },
+    {
+      "path": "tests/Lantern.SpeedTests/Lantern.SpeedTests.csproj",
+      "bytes": 322,
+      "sha256": "083df6d0df5ae77e4628115f89c083f373366a4e934ef1de0270db8d9b8279be"
+    },
+    {
+      "path": "tests/Lantern.SpeedTests/Program.cs",
+      "bytes": 21316,
+      "sha256": "b8652902cab6cc4ba68634aa881221a2f83cc2ade2a08e640e56b12513b383f9"
+    },
+    {
+      "path": "tests/Lantern.StorageTests/Lantern.StorageTests.csproj",
+      "bytes": 345,
+      "sha256": "3e5bfedd1be1bb5e17da016b55632faca083370c28df5066083bd1eecaea676b"
+    },
+    {
+      "path": "tests/Lantern.StorageTests/Program.cs",
+      "bytes": 2545,
+      "sha256": "329405dc343b3b1514d6bf979d287c42019306d283659b65f48b2d154b52c00b"
+    },
+    {
+      "path": "tests/Lantern.WindowsShellTests/Lantern.WindowsShellTests.csproj",
+      "bytes": 615,
+      "sha256": "c5daab9ecc8d315e84754686fb77358d1cabe068a5f24976e30457c4d05a306d"
+    },
+    {
+      "path": "tests/Lantern.WindowsShellTests/Program.cs",
+      "bytes": 3671,
+      "sha256": "58558b23343e48f9c459e94c5703fd605db107a65ba7b6e481f90de9e3bc77e0"
+    },
+    {
+      "path": "tests/NativeStartup/Check-RuntimeSymbols.ps1",
+      "bytes": 3502,
+      "sha256": "0461f6564a8bbdef4a60550bb0d53c87698d1748541e1e0dc7d2b009016eb680"
+    },
+    {
+      "path": "tests/NativeStartup/CrashJournalTest.java",
+      "bytes": 2088,
+      "sha256": "42c63f53c4065e6f296235792452817635ed314e4e8be80bd61f32d12ddfa88b"
+    },
+    {
+      "path": "tests/NativeStartup/WindowStyle/android/graphics/Color.java",
+      "bytes": 92,
+      "sha256": "e6fa64ca83e5881fd8f3e62509b682c9702fc858d5d7436dff35c9b168a199d6"
+    },
+    {
+      "path": "tests/NativeStartup/WindowStyle/android/os/Build.java",
+      "bytes": 113,
+      "sha256": "ba87a6254d9189d95884cd586c1b161730f4baf957774c4ecdbeaf6e63d45c27"
+    },
+    {
+      "path": "tests/NativeStartup/WindowStyle/android/util/Log.java",
+      "bytes": 121,
+      "sha256": "3db114cd6b7c0d1e7c0e7d31fb720f35c16eedfe3ddec31925dc72ea9358c068"
+    },
+    {
+      "path": "tests/NativeStartup/WindowStyle/android/view/View.java",
+      "bytes": 1236,
+      "sha256": "e5164cc70b9dcbc2ac5527647bbe12a1f6e3840fcf9950c04cd1171f586948ec"
+    },
+    {
+      "path": "tests/NativeStartup/WindowStyle/android/view/Window.java",
+      "bytes": 1193,
+      "sha256": "3dcd9bb63a168226dbb80f2e14a5a45f492692d8b28b5b13c1aad456f735d2f9"
+    },
+    {
+      "path": "tests/NativeStartup/WindowStyle/android/view/WindowInsetsController.java",
+      "bytes": 273,
+      "sha256": "1ca558fe2e0a033aa3caa63c1c8213bfacb39405191a97298b3f59defdc86ce8"
+    },
+    {
+      "path": "tests/NativeStartup/WindowStyle/StartupWindowStyleTest.java",
+      "bytes": 2944,
+      "sha256": "ce8b9b095686dde615799a64a9db7ad4882e74b87da671421cde95c09acdc316"
+    },
+    {
+      "path": "tests/ui/compact-chat.cjs",
+      "bytes": 4487,
+      "sha256": "bfc5e2088e0f4f170d258aaf6b354cd3fa5f132746548835b07061c3a5009660"
+    },
+    {
+      "path": "tests/ui/motion-disclosure.cjs",
+      "bytes": 3616,
+      "sha256": "87a5e8a358eb0b975ff7782436f54925b7905bf558608c9e77c2a4a627648dd0"
+    },
+    {
+      "path": "tests/ui/package.json",
+      "bytes": 293,
+      "sha256": "92e000d1e1f86e6929db5b766c062d5c9294f4b6a6a69be4bd73154a94bcb0b9"
+    },
+    {
+      "path": "tests/ui/public-preview.cjs",
+      "bytes": 12324,
+      "sha256": "230f707c91fb2107128ab7b2f7719ace1ab9f2efbdce949fbe9cd5f7aba1ee8d"
+    },
+    {
+      "path": "tests/ui/speed-test.cjs",
+      "bytes": 7706,
+      "sha256": "5dc9767087dfaf2e4a67d4a788ae98610e0600e754e40a24f7d093674d5f068b"
+    },
+    {
+      "path": "tests/ui/touch-feedback.cjs",
+      "bytes": 5670,
+      "sha256": "3e55ab6fba27b192c6b7e37c4044e36b7abc8976797e794a823bb804211ef88d"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
-      "sha256": "146b5246f47ccc82295dbdb7d695b47404838f8349943ed3139692529b7e40c3"
+      "bytes": 922,
+      "sha256": "a818b168736d29595b7bb365ce0644a583a618ee600a6d1230af807fd22001b8"
+    },
+    {
+      "path": "tools/Check-PublicSource.ps1",
+      "bytes": 3630,
+      "sha256": "09a9aebc26938ff3d641eae13f3b85aa873277dec3f4d8103fabf9a31696ccbd"
+    },
+    {
+      "path": "tools/Check-ReleasePrivacy.ps1",
+      "bytes": 2531,
+      "sha256": "ba82454e4395c8bda4d06843f49951498bef0e40a99282eefd38f0281e45b4bd"
+    },
+    {
+      "path": "tools/Run-Checks.ps1",
+      "bytes": 2028,
+      "sha256": "ae09bcfed115ff649a98437f620d65b126ad680f3b31e1f3f1bb68547d290624"
+    },
+    {
+      "path": "tools/Sync-PublicSource.ps1",
+      "bytes": 6873,
+      "sha256": "cffa5374c9be570b1a4dafe3ead5b3312c81ef9c4936ac77adb4f47b80cc264d"
+    },
+    {
+      "path": "tools/Test-NativeStartup.ps1",
+      "bytes": 1737,
+      "sha256": "abe4c57b213544fcf71fd4beea9eec75189ec4e92f32ba3fe7d2437701021c77"
+    },
+    {
+      "path": "tools/Update-Windows.ps1",
+      "bytes": 7054,
+      "sha256": "bc80ce7525ddd63470c574f4f9b8c4413a165e9ea11e29e3519fba880532e9f9"
     },
     {
       "path": "ui/app.js",
+      "bytes": 120172,
       "sha256": "75e60e46b6aead33661be34d7b4bb2681e9bf48da1353d4d32b0d4e36fe0d3d4"
     },
     {
       "path": "ui/coast.svg",
+      "bytes": 716,
       "sha256": "22a454905c53714fa497ede9f8eb8097435534a26578232ee51b8ced8a0cad67"
     },
     {
       "path": "ui/dom.js",
+      "bytes": 3024,
       "sha256": "be190df878adbb75f18ca29726d401570dae0b613dccc1f4447ec8282c92aedd"
     },
     {
       "path": "ui/experience.css",
+      "bytes": 34861,
       "sha256": "084c9239fbfa3da33ed1b5540c99a111db81dca8095f48633ca39c920d9ecbd2"
     },
     {
       "path": "ui/icon.svg",
+      "bytes": 178,
       "sha256": "977592f0ed3bb8edebd196289fa0d8d67f869b006019fe128f69cea48c7edddf"
     },
     {
       "path": "ui/index.html",
+      "bytes": 1112,
       "sha256": "71c2aa37bc855a503ca1ef46cd6ae0f335e08f03a1e1b177986f1c46ed1b47c6"
     },
     {
       "path": "ui/layout.css",
+      "bytes": 16019,
       "sha256": "5f7da0a8d995a9f0d8714327f9fbcefa11b9fd19d0e16d579c8b6e41e0b0afa3"
     },
     {
       "path": "ui/mountain.svg",
+      "bytes": 781,
       "sha256": "fc8479eee4083920bd30a34502e80181ab75c7f2cb5a0e5ac5e4f21b90dde255"
     },
     {
       "path": "ui/polish.css",
+      "bytes": 41797,
       "sha256": "c4798637d2fae2d02dacc7b67fba1e1ee0b0474b57afa6a52bfb968a30347879"
     },
     {
       "path": "ui/style.css",
+      "bytes": 33308,
       "sha256": "29aeb1abf46a54f45cf9e867bbd85874a177b4ef1a64565903910d8d1d7bdb69"
     },
     {
       "path": "ui/theme.css",
+      "bytes": 10835,
       "sha256": "03559b7da5b0b2df8c92b4acac07c6adb25245763563950517dc21afd3ce7c0b"
     },
     {
       "path": "ui/theme.js",
+      "bytes": 1075,
       "sha256": "f911dc14615779650f635a82f3059d012335b0fdbf581254236e9f53347a96c2"
     }
   ]

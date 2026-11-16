@@ -1,21 +1,88 @@
-# 闪传 Lantern 0.7.4 测试版
+# 闪传 Lantern
 
-面向 Windows 和 Android 的局域网文件传输及设备聊天工具。同一网络内，经配对后可互传文件、图片和消息。
+让分享回归设备之间。快速直连，尊重每一份隐私。
 
-## 下载
+局域网文件传输及设备聊天工具，提供 Windows 与 Android 客户端。此分支是从现存历史修改与双端产物恢复的 **0.7.4** 源码，Android versionCode **37**。
 
-请打开本仓库的 Releases / 发行版，选择 **0.7.4 测试版**。
+## 0.7.4 测试版
 
-- Android 下载 Lantern-Android.apk。此次发布的 Android versionCode 为 37。
-- Windows 下载 Lantern-Windows.zip，解压后运行 Lantern.exe。
-- SHA256SUMS.txt 可用于校验下载的两个文件。
+[GitHub 发行页](https://github.com/altale0218/lantern-releases/releases/tag/v0.7.4) · [Gitee 发行页](https://gitee.com/altalatic/lantern-releases/releases/tag/v0.7.4)
 
-## 使用
+从源码在本机完成了 Windows 和 Android 两个 Release 构建。共享界面文件与原安装包一致，Windows 的共享程序集和应用托管方法也已比对。当前源码属于恢复快照，原始安装包仍可从发行页下载。
 
-在两端打开闪传并连接到同一局域网。发现设备后使用匹配码配对，再在两端确认。配对完成后，选中发送对象和文件即可发送。
+## 功能
 
-## 源码状态
+- 匹配码与双方确认建立配对；记住设备密钥，每次连接重新认证。
+- 文字、图片与文件通过认证后的加密通道传输，并校验完整性及回执。
+- 多设备发现、独立任务、群发、进度/速度统计与设备聊天记录。
+- Windows 支持拖拽、文件右键操作、通知、任务栏进度及接收目录选择。
+- Android 在本机解密和校验后保存到公开目录；支持通知与系统栏适配。
+- Android 可通过已配对的 Windows 获取配套 APK 和更新日志。
+- 已配对设备之间可进行独立双向连接测速；测试数据加密、校验且不落盘。
+- 安卓 APK 与 Windows 免安装包独立提供，Windows 内配套 APK 支持局域网 OTA。
+- 共享深浅主题、字号与界面缩放、快捷设备入口、短页面过渡。
 
-主分支的 ui/ 收录从 0.7.4 两个安装包中提取并逐文件比对的 HTML、CSS、JavaScript 和 SVG，可用于阅读和界面开发。设备发现、配对、加密传输与系统安装依赖原生客户端。完整的原生项目和可重建源码快照待补齐。
+## 界面演示
 
-可以用浏览器打开 ui/index.html 查看界面。下载附件和版本说明请参阅 0.7.4 发行页。
+下图使用虚构设备、文档示例地址与演示内容，不包含真实设备或聊天记录；属于浏览器界面演示，不作为 Android 真机兼容证明。
+
+![Windows 浅色界面](docs/images/windows-light.png)
+
+<img src="docs/images/android-dark.png" width="260" alt="Android 深色界面，虚构数据"> <img src="docs/images/android-light.png" width="260" alt="Android 浅色界面，虚构数据">
+
+## 目录
+
+| 目录 | 内容 |
+| --- | --- |
+| src/Lantern.Core | 配对、身份认证、AES-GCM、发现和流式文件传输 |
+| src/Lantern.AppLogic | 共享业务、聊天记录、设置、任务与 OTA |
+| src/Lantern.Windows | WinForms、WebView2、DPAPI、通知和文件管理 |
+| src/Lantern.Android | Android 原生入口、WebView、Keystore 与公开存储 |
+| ui | 共享页面、离线交互演示与项目内编写的 SVG |
+| tests | 协议、业务、存储与原生启动回归检查 |
+| tools | 无个人路径的检查、构建及更新工具 |
+| licenses | 原样保留的第三方许可与声明 |
+
+## 开始开发
+
+使用 .NET 10 SDK；Windows 目标 .NET 8 Windows Desktop。Android 目标 API 36、最低 API 26，提供 ARM64 和 x86_64 架构；Android 构建另需 Android workload、SDK 和 JDK 21。
+
+```powershell
+dotnet build src/Lantern.Windows/Lantern.Windows.csproj -c Release
+pwsh -File tools/Run-Checks.ps1
+pwsh -File tools/Check-PublicSource.ps1 -StrictExport
+```
+
+完整步骤见 [构建与签名](docs/BUILD.md)、[测试](docs/TESTING.md)、[OTA 打包](docs/RELEASING.md)。请使用虚构的测试资料。
+
+ui/index.html 是离线演示，示例设备、地址、指纹和文件均为虚构；预览模式不会发送文件。原生客户端从系统读取本机信息，并在运行时生成、保管自己的密钥。
+
+## 安全与隐私
+
+网络加密不隐藏设备昵称、IP、包长或时序；也不保护已经被控制的终端和已授权端点。保存到公开文件夹的文件遵循操作系统本地访问权限。实现尚未经过独立密码协议审计，Android 17 / API 37 与厂商系统仍需真机验证。
+
+详见 [安全设计及漏洞报告](SECURITY.md)、[隐私说明](PRIVACY.md) 和 [公开前检查](docs/PUBLISHING.md)。开源会公开实现，不需要包含任何真实设备密钥、历史记录、签名材料或用户资料。
+
+## 许可与贡献
+
+项目原创部分准备采用 [MIT](LICENSE)，署名为项目贡献者集合；公开发布前由维护者确认许可选择。第三方组件继续适用各自许可证，见 [第三方声明](THIRD_PARTY_NOTICES.md)。
+
+欢迎阅读 [贡献指南](CONTRIBUTING.md) 后提交问题和改进。源码属于恢复版本。已发布的 0.7.4 安装包和下载校验值见发行页。开发者可按构建说明使用自己的本地签名。
+
+Windows 客户端不支持互联网在线更新，请前往本项目 GitHub 仓库的 Releases 页面下载最新版并按包内说明在原目录手动更新。Windows 向已认证安卓设备提供局域网 OTA 的功能保持可用。
+
+## 安卓紧凑聊天预览
+
+以下界面使用虚构设备、消息与附件生成，不包含个人资料。输入栏合并为一行，正文和字号缩放保持可读。
+
+| 浅色聊天 | 深色聊天 |
+| --- | --- |
+| ![虚构安卓浅色聊天](docs/images/android-chat-light.png) | ![虚构安卓深色聊天](docs/images/android-chat-dark.png) |
+
+## 设备连接测速预览
+
+进入“我的设备”中已配对在线设备下的“连接测速”，自动分别测试 A → B 和 B → A。双端需要 0.7.0 或以上。下图数值为明确虚构的界面演示，不是实际带宽测量结果。
+
+<img src="docs/images/android-speed-light.png" width="280" alt="虚构安卓双向测速演示"> 
+
+![虚构 Windows 双向测速演示](docs/images/windows-speed-dark.png)

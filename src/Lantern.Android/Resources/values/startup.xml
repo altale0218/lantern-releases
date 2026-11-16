@@ -1,0 +1,8 @@
+<resources>
+  <color name="startup_background">#F5F7FA</color>
+  <style name="LanternTheme" parent="android:style/Theme.DeviceDefault.DayNight">
+    <item name="android:windowActionBar">false</item>
+    <item name="android:windowNoTitle">true</item>
+    <item name="android:windowBackground">@color/startup_background</item>
+  </style>
+</resources>

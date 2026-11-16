@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../src/Lantern.AppLogic/Lantern.AppLogic.csproj" /><Compile Include="../../src/Lantern.Windows/TaskbarProgress.cs" Link="TaskbarProgress.cs" /></ItemGroup>
+</Project>

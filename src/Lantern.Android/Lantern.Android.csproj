@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0-android36.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion><ApplicationId>com.lantern.transfer</ApplicationId><ApplicationVersion>1</ApplicationVersion><ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion><AndroidPackageFormats>apk</AndroidPackageFormats><AndroidLinkMode>None</AndroidLinkMode><RunAOTCompilation>false</RunAOTCompilation><EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk><AndroidUseSharedRuntime>false</AndroidUseSharedRuntime><RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../Lantern.AppLogic/Lantern.AppLogic.csproj" /></ItemGroup>
+  <PropertyGroup><RootNamespace>Lantern.AndroidApp</RootNamespace></PropertyGroup>
+  <PropertyGroup>
+    <ApplicationVersion>37</ApplicationVersion>
+    <ApplicationDisplayVersion>0.7.4</ApplicationDisplayVersion>
+    <!-- Keep runtime data exports generated: disabling compression omits symbols
+         required by libmonodroid in Android workload 36.1.69. -->
+    <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
+    <AndroidUseAssemblyStore>true</AndroidUseAssemblyStore>
+    <AndroidEnableAssemblyCompression>true</AndroidEnableAssemblyCompression>
+  </PropertyGroup>
+  <ItemGroup>
+    <AndroidJavaSource Update="**/*.java" Bind="false" />
+    <AndroidManifestOverlay Include="Native/StartupManifestOverlay.xml" />
+    <AndroidManifestOverlay Include="$(XiaomiIslandManifestOverlay)" Condition="'$(XiaomiIslandManifestOverlay)' != ''" />
+  </ItemGroup>
+  <ItemGroup><AndroidAsset Include="../../ui/**/*"><Link>Assets/ui/%(RecursiveDir)%(Filename)%(Extension)</Link><LogicalName>ui/%(RecursiveDir)%(Filename)%(Extension)</LogicalName></AndroidAsset></ItemGroup>
+  <ItemGroup><AndroidAsset Include="../../licenses/*"><Link>Assets/licenses/%(Filename)%(Extension)</Link><LogicalName>licenses/%(Filename)%(Extension)</LogicalName></AndroidAsset></ItemGroup>
+</Project>

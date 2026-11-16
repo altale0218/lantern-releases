@@ -1,0 +1,26 @@
+const {chromium}=require('playwright');
+const fs=require('fs'),path=require('path'),http=require('http'),assert=require('assert/strict');const root=path.resolve(__dirname,'../../ui');let checks=0;const scenes=[];
+const line=fs.readFileSync(path.join(__dirname,'public-preview.cjs'),'utf8').split('\n').find(l=>l.startsWith('const fixture=')),fixture=eval(line.replace('const fixture=','').replace(/;\s*$/,''));
+const server=http.createServer((q,r)=>fs.readFile(path.join(root,q.url==='/'?'index.html':q.url),(e,d)=>{r.setHeader('Content-Type',({'.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml'})[path.extname(q.url)]||'text/html');r.statusCode=e?404:200;r.end(d)}));
+const check=(v,label)=>{assert.ok(v,label);checks++};
+(async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});try{
+ for(const size of [{width:320,height:640},{width:390,height:844},{width:844,height:390}])for(const theme of ['light','dark'])for(const fontScale of [100,150]){
+  const p=await browser.newPage({viewport:size,isMobile:true,hasTouch:true}),s=fixture('Android'),label=theme+' '+size.width+'x'+size.height+' font '+fontScale;s.settings={...s.settings,theme,fontScale};
+  await p.goto('http://127.0.0.1:'+server.address().port);await p.evaluate(s=>{window.fixture=s;window.lantern.setState(s);window.lantern.setInsets({top:28,bottom:24,left:0,right:0,keyboardVisible:false})},s);
+  await p.locator('button[data-page="history"]:visible').first().tap();await p.locator('[data-chat-key="key-a"]').tap();await p.waitForFunction(()=>document.documentElement.dataset.page==='chat');await p.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{}))));
+  await p.locator('#chat-text').fill('第一行清晰文字\n第二行内容不会因刷新丢失');
+  for(const keyboard of [false,true]){
+   await p.setViewportSize({...size,height:keyboard?Math.min(size.height,320):size.height});
+   await p.evaluate(keyboard=>window.lantern.setInsets({top:28,bottom:keyboard?0:24,left:0,right:0,keyboardVisible:keyboard}),keyboard);await p.waitForTimeout(40);
+   const m=await p.evaluate(()=>{const box=e=>{const b=e.getBoundingClientRect();return {x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height}},input=document.getElementById('chat-text'),css=getComputedStyle(input);return {input:box(input),actions:box(document.querySelector('.chat-compose-actions')),buttons:[...document.querySelectorAll('.chat-compose-actions button')].map(e=>({box:box(e),name:e.getAttribute('aria-label'),icon:getComputedStyle(e.querySelector('svg')).display})),log:box(document.querySelector('.chat-log')),font:parseFloat(css.fontSize),line:parseFloat(css.lineHeight),inner:input.clientHeight-parseFloat(css.paddingTop)-parseFloat(css.paddingBottom),composer:box(document.querySelector('.chat-composer')),viewport:{width:innerWidth,height:innerHeight},padding:getComputedStyle(document.querySelector('.chat-composer')).paddingBottom}});
+   check(m.input.right+4<=m.actions.x&&m.actions.right<=m.viewport.width,label+' composer has separate usable input and buttons');
+   check(m.buttons.every(b=>b.box.width>=44&&b.box.height>=44&&b.name&&b.icon!=='none'),label+' visible labeled 44px attachment/send controls');
+   check(m.font>=14*fontScale/100-.1&&m.inner>=m.line-.5,label+' readable text fits input line');
+   check(m.composer.bottom<=m.viewport.height+2&&m.log.height>=25,label+' messages and composer fit '+(keyboard?'keyboard':'normal')+' viewport');
+   if(keyboard)check(m.padding==='8px',label+' keyboard replaces gesture inset padding');
+   await p.evaluate(()=>{window.originalInput=document.getElementById('chat-text');for(let i=0;i<30;i++)window.lantern.setState(fixture)});
+   check(await p.evaluate(()=>originalInput===document.getElementById('chat-text')&&originalInput.value==='第一行清晰文字\n第二行内容不会因刷新丢失'),label+' multiline draft and input survive snapshots');
+   scenes.push({label,keyboard,...m});
+  }await p.close();
+ }fs.writeFileSync(path.join(fs.mkdtempSync(path.join(require('os').tmpdir(),'Lantern-Compact-Chat-')),'result.json'),JSON.stringify({success:true,checks,scenes},null,2));console.log('PASS '+checks+' compact chat, keyboard viewport, readable text, touch target and draft checks');
+ }finally{await browser.close();server.close()}})().catch(e=>{console.error(e);process.exitCode=1});

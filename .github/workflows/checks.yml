@@ -1,0 +1,59 @@
+name: Source checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+permissions:
+  contents: read
+concurrency:
+  group: source-checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Review public source
+        shell: pwsh
+        run: ./tools/Check-PublicSource.ps1
+      - name: Build and deterministic checks
+        shell: pwsh
+        run: ./tools/Run-Checks.ps1
+
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install UI test dependency
+        working-directory: tests/ui
+        run: npm install --ignore-scripts
+      - name: Install test browser
+        working-directory: tests/ui
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Check public-preview interactions
+        working-directory: tests/ui
+        run: npm test

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework><UseWindowsForms>true</UseWindowsForms><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><ApplicationManifest>app.manifest</ApplicationManifest><AssemblyName>Lantern</AssemblyName><Version>0.1.0</Version></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../Lantern.AppLogic/Lantern.AppLogic.csproj" /><PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3537.50" /><PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" /></ItemGroup>
+  <ItemGroup><Content Include="../../ui/**/*"><Link>ui/%(RecursiveDir)%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content></ItemGroup>
+  <ItemGroup><Content Include="../../licenses/*"><Link>licenses/%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content></ItemGroup>
+  <PropertyGroup><ApplicationIcon>Resources/lantern.ico</ApplicationIcon></PropertyGroup>
+  <PropertyGroup><Version>0.7.4</Version></PropertyGroup>
+  <Target Name="RemoveUnusedWebViewWpf" BeforeTargets="ResolveAssemblyReferences"><ItemGroup><Reference Remove="@(Reference)" Condition="$([System.String]::Copy('%(Reference.Filename)').Equals('Microsoft.Web.WebView2.Wpf'))" /></ItemGroup></Target>
+</Project>

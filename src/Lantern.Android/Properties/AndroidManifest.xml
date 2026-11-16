@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+  <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <application android:name="com.lantern.transfer.CrashCaptureApplication" android:label="闪传 Lantern" android:icon="@mipmap/ic_launcher" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true" android:enableOnBackInvokedCallback="true" android:theme="@style/LanternTheme">
+    <!-- This process has no Mono runtime provider and can show native crash reports. -->
+    <activity android:name="com.lantern.transfer.StartupActivity" android:process=":startup" android:exported="true">
+    </activity>
+    <!-- Keep the launcher component name used by 0.3.1 so existing home-screen shortcuts work. -->
+    <activity-alias android:name="crc64f8b9fd0be084e0da.MainActivity" android:targetActivity="com.lantern.transfer.StartupActivity" android:exported="true">
+      <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+    </activity-alias>
+  </application>
+</manifest>

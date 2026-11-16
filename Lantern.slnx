@@ -1,0 +1,19 @@
+<Solution>
+  <Project Path="src/Lantern.Android/Lantern.Android.csproj" />
+  <Project Path="src/Lantern.AppLogic/Lantern.AppLogic.csproj" />
+  <Project Path="src/Lantern.Core/Lantern.Core.csproj" />
+  <Project Path="src/Lantern.Windows/Lantern.Windows.csproj" />
+  <Project Path="tests/Lantern.BulkTests/Lantern.BulkTests.csproj" />
+  <Project Path="tests/Lantern.ChatTests/Lantern.ChatTests.csproj" />
+  <Project Path="tests/Lantern.FanoutTests/Lantern.FanoutTests.csproj" />
+  <Project Path="tests/Lantern.NetworkStressTests/Lantern.NetworkStressTests.csproj" />
+  <Project Path="tests/Lantern.NotificationTests/Lantern.NotificationTests.csproj" />
+  <Project Path="tests/Lantern.OtaTests/Lantern.OtaTests.csproj" />
+  <Project Path="tests/Lantern.PairingTests/Lantern.PairingTests.csproj" />
+  <Project Path="tests/Lantern.RetryTests/Lantern.RetryTests.csproj" />
+  <Project Path="tests/Lantern.SecurityTests/Lantern.SecurityTests.csproj" />
+  <Project Path="tests/Lantern.SoakTests/Lantern.SoakTests.csproj" />
+  <Project Path="tests/Lantern.StorageTests/Lantern.StorageTests.csproj" />
+  <Project Path="tests/Lantern.WindowsShellTests/Lantern.WindowsShellTests.csproj" />
+  <Project Path="tests/Lantern.SpeedTests/Lantern.SpeedTests.csproj" />
+</Solution>

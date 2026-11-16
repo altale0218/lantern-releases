@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "test": "node public-preview.cjs && node touch-feedback.cjs && node compact-chat.cjs && node speed-test.cjs && node motion-disclosure.cjs"
+  },
+  "private": true,
+  "name": "lantern-ui-checks",
+  "devDependencies": {
+    "playwright": "1.62.1"
+  },
+  "version": "0.7.4"
+}
