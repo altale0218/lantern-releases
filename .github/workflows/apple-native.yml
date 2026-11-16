@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.300'
-      - name: Trace native launch phases in the simulator fixture
+      - name: Test scene-owned window storage
         shell: bash
         run: |
           set -euo pipefail
@@ -58,10 +58,24 @@ jobs:
                   StartupProbe.Mark("Main");
                   UIApplication.Main(args, null, typeof(AppDelegate));
               }"""))
+          source = path.read_text()
+          old = "private LanternTabs? tabs;"
+          assert source.count(old) == 1
+          source = source.replace(old, old + "\n    public override UIWindow? Window { get; set; }")
+          old = "Window = new UIWindow(windowScene) { RootViewController = tabs };\n        Window.MakeKeyAndVisible();"
+          assert source.count(old) == 1
+          source = source.replace(old, """var window = new UIWindow(windowScene);
+                  StartupProbe.Mark("Window allocated");
+                  window.RootViewController = tabs;
+                  StartupProbe.Mark("Root view controller assigned");
+                  Window = window;
+                  StartupProbe.Mark("Window stored by scene");
+                  window.MakeKeyAndVisible();""")
+          path.write_text(source)
           for marker, phase, placement in [
               ("if (scene is not UIWindowScene windowScene) return;", "WillConnect", "before"),
               ("tabs = new LanternTabs();", "Tabs created", "after"),
-              ("Window.MakeKeyAndVisible();", "Window ready", "after"),
+              ("window.MakeKeyAndVisible();", "Window ready", "after"),
           ]:
               insert("Program.cs", marker, phase, placement)
           for marker, phase, placement in [

@@ -33,8 +33,8 @@
     },
     {
       "path": ".github/workflows/apple-native.yml",
-      "bytes": 8948,
-      "sha256": "145b3af2160bacdb10f4f0e0854fe7e50e8332efb09ea62f37314456881be03e"
+      "bytes": 9754,
+      "sha256": "aab25b5cea35e4043bec68ae374d56c821b3276ce8463cf82e6aebc06d65f069"
     },
     {
       "path": ".github/workflows/checks.yml",
