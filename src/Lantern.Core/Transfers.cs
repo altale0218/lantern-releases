@@ -138,7 +138,8 @@ public static class Transfers
                 string partial = Path.Combine(directory, item.Id + ".part");
                 using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
                 long fileCompleted = 0;
-                await using (var output = new FileStream(partial, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                int writeBufferSize = (int)Math.Clamp(item.Size, 4 * 1024, 64 * 1024);
+                await using (var output = new FileStream(partial, FileMode.CreateNew, FileAccess.Write, FileShare.None, writeBufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
                 {
                     while (fileCompleted < item.Size)
                     {

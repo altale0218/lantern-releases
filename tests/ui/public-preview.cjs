@@ -243,6 +243,15 @@ async function checkTouch(p,label){
   await p.evaluate(()=>{window.searchInput=document.getElementById('conversation-search');for(let i=0;i<30;i++)window.lantern.setState(fixture)});check(await p.evaluate(()=>searchInput===document.getElementById('conversation-search')&&searchInput.value==='ANDROID'),platform+' search and input retained on native snapshots');
   await p.locator('#conversation-search').fill('no-such-device');check(await p.locator('.chat-conversation').count()===0&&await p.locator('.release-empty').count()===1,platform+' filtered empty state');await p.locator('[data-action="clear-conversation-search"]').first().click();check(await p.locator('.chat-conversation').count()===2,platform+' clearing search restores all devices');
   await p.locator('button[data-page="settings"]:visible').first().click();await route(p,'settings');await p.locator('[data-action="privacy-info"]').click();check(await p.locator('.privacy-points p').count()===4,platform+' clear offline privacy explanation');check((await p.locator('#modal').innerText()).includes('删除记录与删除实际文件是独立操作'),platform+' record/file deletion distinction explained');await p.locator('#modal [data-action="close-modal"]').first().click();
+  await p.evaluate(()=>window.scrollTo(0,0));
+  await p.getByLabel('跳到设置分组').selectOption('settings-appearance');
+  check(await p.evaluate(()=>{
+   const title=document.activeElement;
+   const topbar=document.querySelector('.topbar').getBoundingClientRect();
+   return title.textContent.includes('外观')&&title.getBoundingClientRect().top>=Math.max(0,topbar.bottom)&&title.getBoundingClientRect().bottom<=innerHeight;
+  }),platform+' section navigation keeps its focus and title visible');
+  check(await p.getByLabel('跳到设置分组').inputValue()==='',platform+' same settings group can be selected again');
+  await p.evaluate(()=>window.scrollTo(0,0));
   const toggle=p.locator('[data-toggle="autoAccept"]');await toggle.click();check(await toggle.isDisabled(),platform+' setting request marked busy');await p.evaluate(()=>document.querySelector('[data-toggle="autoAccept"]').click());await p.waitForFunction(()=>document.querySelector('[data-toggle="autoAccept"]').getAttribute('aria-checked')==='false');check(await p.evaluate(()=>commands.filter(c=>c.type==='setting').length)===1,platform+' duplicate setting writes prevented');
   await p.locator('button[data-page="transfer"]:visible').first().click();await route(p,'transfer');check(await p.locator('button[data-page="transfer"][aria-current="page"]:visible').count()===1,platform+' navigation exposes current page');
   for(const theme of ['light','dark']){await p.evaluate(theme=>{fixture.mode='preview';fixture.settings.theme=theme;window.lantern.setState(fixture)},theme);await p.screenshot({path:path.join(output,platform.toLowerCase()+'-'+theme+'.png')});check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),platform+' '+theme+' home fits viewport');if(theme==='dark')check(await p.locator('.release-send-card .drop-area').evaluate(e=>getComputedStyle(e).backgroundColor)==='rgb(13, 16, 22)',platform+' theme colors switch atomically without a light flash')}

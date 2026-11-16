@@ -31,7 +31,7 @@ public final class CrashCaptureApplication extends Application {
                 try(FileInputStream input=new FileInputStream(new File(getFilesDir(),process.endsWith(":startup")?"startup-launch-stage.txt":"startup-stage.txt"))) {
                     byte[] bytes=new byte[4096];int count=input.read(bytes);if(count>0)phase=new String(bytes,0,count,StandardCharsets.UTF_8);
                 } catch(Exception ignored) {}
-                return "Lantern Android 0.7.22\n来源：原生 Java 未捕获异常\n设备："+Build.MANUFACTURER+" "+Build.MODEL+
+                return "Lantern Android 0.7.23\n来源：原生 Java 未捕获异常\n设备："+Build.MANUFACTURER+" "+Build.MODEL+
                     "\nAndroid："+Build.VERSION.RELEASE+" / API "+Build.VERSION.SDK_INT+
                     "\n时间："+new java.util.Date()+"\n进程："+process+"\n阶段："+phase;
             },previous));

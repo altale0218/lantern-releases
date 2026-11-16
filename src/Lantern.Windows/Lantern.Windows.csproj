@@ -4,6 +4,6 @@
   <ItemGroup><Content Include="../../ui/**/*"><Link>ui/%(RecursiveDir)%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content></ItemGroup>
   <ItemGroup><Content Include="../../licenses/*"><Link>licenses/%(Filename)%(Extension)</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content></ItemGroup>
   <PropertyGroup><ApplicationIcon>Resources/lantern.ico</ApplicationIcon></PropertyGroup>
-  <PropertyGroup><Version>0.7.22</Version></PropertyGroup>
+  <PropertyGroup><Version>0.7.23</Version></PropertyGroup>
   <Target Name="RemoveUnusedWebViewWpf" BeforeTargets="ResolveAssemblyReferences"><ItemGroup><Reference Remove="@(Reference)" Condition="$([System.String]::Copy('%(Reference.Filename)').Equals('Microsoft.Web.WebView2.Wpf'))" /></ItemGroup></Target>
 </Project>

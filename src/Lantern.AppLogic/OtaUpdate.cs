@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.22";
-    public const int AndroidCode=55;
+    public const string Version="0.7.23";
+    public const int AndroidCode=56;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.22\n• 键盘打开确认发送时聚焦设备搜索，配对已带入地址时聚焦匹配码。\n• 修复较早的弹窗关闭结果误关随后打开的发送窗口。\n• 弹窗、设置开关与任务进度提供更明确的读屏提示。\n• Windows 最小化与 Android 界面离开屏幕时减少界面刷新，继续处理发现和传输通知。";
+    public const string Notes="0.7.23\n• 设置新增分组跳转，窄屏上的开关说明使用整行。\n• 大字号和界面放大时，底部导航保持单行。\n• 按文件大小选择接收写入缓冲，减少一次接收许多小文件时的内存分配。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);
