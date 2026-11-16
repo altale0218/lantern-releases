@@ -1,27 +1,27 @@
 [
   {
-    "tag_name": "v0.7.19",
+    "tag_name": "v0.7.21",
     "draft": false,
     "prerelease": true,
-    "body": "Lantern 0.7.19 测试版。\n\n- Gitee 优先查询最新发布，发行数量增加后仍可找到新版。\n- 更新检查按所选频道继续查询后续发布页，稳定版可能排在多条测试版之后。\n- Windows 准备大批本地文件时复用已读取的文件属性。\n- Android 包 versionCode 52，沿用原发布签名。Windows 提供独立压缩包。",
+    "body": "Lantern 0.7.21 测试版。\n\n- GitHub 和 Gitee 发行接口限流时，会读取各自官方地址的备用清单，再校验安装包和摘要。\n- 接收文件时，仅为图片与视频生成缩略图。预览生成失败时，已校验文件可以照常保存。\n- 降低大批文件进度更新与历史记录较多时的通知开销。\n- Android 包 versionCode 54，沿用原发布签名。Windows 提供独立压缩包。",
     "assets": [
       {
         "name": "Lantern-Android.apk",
-        "size": 47066739,
-        "digest": "sha256:a6204be106326311bd9d20c092defbfe0bb20f94e9557811b118246c8ce02b94",
-        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.19/Lantern-Android.apk"
+        "size": 47070835,
+        "digest": "sha256:27255805c785f3b703200a3a220ca4560624cce80cab6ea86083d8449c40c55a",
+        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.21/Lantern-Android.apk"
       },
       {
         "name": "Lantern-Windows.zip",
-        "size": 3406024,
-        "digest": "sha256:908340e1f8ccc8c18c1a4cb8df054efb3e2f3a392387b66839ba4bcae200b9ff",
-        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.19/Lantern-Windows.zip"
+        "size": 3408502,
+        "digest": "sha256:1a814e275d9920c7b4f02ecaf4bfd432c75e078d4b0a8159815a994a9b9f170a",
+        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.21/Lantern-Windows.zip"
       },
       {
         "name": "SHA256SUMS.txt",
         "size": 172,
-        "digest": "sha256:1c95323a3498d75293ceb04d1bbcc43db8a3531c0ace2d87da46638b584921bf",
-        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.19/SHA256SUMS.txt"
+        "digest": "sha256:1db48d91b51d1441f00e00e7f60f8a6a3450637f70ee5dd9331f35f5defc679d",
+        "browser_download_url": "https://gitee.com/altalatic/lantern-releases/releases/download/v0.7.21/SHA256SUMS.txt"
       }
     ]
   }
