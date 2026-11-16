@@ -190,7 +190,13 @@
 .task-list-more{display:flex;justify-content:center;margin:16px 0 4px}
 .task-list-more .btn{max-width:100%;white-space:normal;text-align:center}
 .task-card[tabindex="-1"]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.task-card{container:transfer-task / inline-size}
 .task-summary{gap:10px;padding:16px}
+.task-summary:not(.has-task-rate){grid-template-areas:"icon identity identity" ". actions actions"}
+.task-rate.complete small{color:var(--muted)}
+.task-result-info{color:var(--muted);margin-top:8px;font-size:calc(13px * var(--font-scale,1));line-height:1.6;overflow-wrap:anywhere}
+.task-title .tag.task-failed,.task-problem{color:var(--danger,#e98e91)}
+:root[data-theme="light"] .task-title .tag.task-failed,:root[data-theme="light"] .task-problem{color:#a32737}
 .task-actions{gap:6px}
 .task-title h3{line-height:1.5;font-weight:600}
 .task-meta{line-height:1.55;font-size:calc(13px * var(--font-scale,1))}
@@ -304,14 +310,22 @@
 }
 :root[data-platform="Android"] .mobile-nav button .count{font-size:10px}
 .main h1[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:2px}
-@media(min-width:1101px){
- :root[data-platform="Windows"] .task-summary{display:flex;flex-wrap:wrap;align-items:center}
- :root[data-platform="Windows"] .task-summary>.file-stack{flex:0 0 42px}
- :root[data-platform="Windows"] .task-identity{flex:1 1 220px}
- :root[data-platform="Windows"] .task-rate{flex:0 1 145px}
- :root[data-platform="Windows"] .task-actions{flex:0 1 auto}
- :root[data-platform="Windows"] .task-actions{max-width:160px;justify-content:flex-end}
+@media(max-width:900px){
+ .task-summary:not(.has-task-rate){grid-template-areas:"icon identity" "actions actions"}
+}
+@container transfer-task (min-width:650px){
+ :root[data-platform="Windows"] .task-summary{grid-template-columns:42px minmax(0,1fr) minmax(96px,18%) max-content;grid-template-areas:"icon identity rate actions";align-items:center}
+ :root[data-platform="Windows"] .task-summary:not(.has-task-rate){grid-template-columns:42px minmax(0,1fr) max-content;grid-template-areas:"icon identity actions"}
+ :root[data-platform="Windows"] .task-actions{max-width:178px;justify-content:flex-end}
  :root[data-platform="Windows"] .task-actions .icon-btn{min-width:36px;min-height:36px;width:36px;height:36px}
+}
+@container transfer-task (min-width:315px){
+ :root[data-platform="Android"] .task-summary.is-active-task.has-task-rate{
+  grid-template-columns:36px minmax(0,1fr) auto;
+  grid-template-areas:"icon identity identity" "rate rate actions";
+  align-items:center
+ }
+ :root[data-platform="Android"] .task-summary.is-active-task .task-rate{border:0;padding-top:0}
 }
 :root[data-platform="Android"] .release-send-card{padding:16px;background:var(--panel)}
 :root[data-platform="Android"] .release-send-card .send-card-heading h2{font-size:calc(17px * var(--font-scale,1));margin:0;line-height:1.5}
@@ -362,7 +376,9 @@
 :root[data-platform="Android"] .preferences-grid .settings-group{padding:12px;border-radius:12px}
 :root[data-platform="Android"] .preferences-grid .setting{padding-top:10px;padding-bottom:10px}
 :root[data-platform="Android"] .transfer-overview{gap:8px}
-:root[data-platform="Android"] .transfer-overview .stat{padding:11px}
+:root[data-platform="Android"] .stats.transfer-overview{margin-top:8px}
+:root[data-platform="Android"] .transfer-overview .stat{padding:10px 11px;gap:2px}
+:root[data-platform="Android"] .transfer-overview .stat-value{font-size:calc(24px * var(--font-scale,1));line-height:1.2;margin:3px 0}
 :root[data-platform="Android"] .task-summary{padding:14px;gap:10px}
 :root[data-platform="Android"] .conversation-list{gap:8px}
 :root[data-platform="Android"] .chat-conversation{padding:12px;gap:10px}

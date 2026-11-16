@@ -335,10 +335,15 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
                 case "decision":
                     if (pending.TryGetValue(Text("id"), out var answer)) answer.Answer.TrySetResult(command.GetProperty("accept").GetBoolean()); break;
                 case "pause":
-                    if (controls.TryGetValue(Text("id"), out var transfer))
+                    string taskId = Text("id");
+                    lock (taskGate)
                     {
+                        if (!tasks.TryGetValue(taskId, out var task) || task.State is not ("transferring" or "paused") ||
+                            !controls.TryGetValue(taskId, out var transfer))
+                            return new { ok = false, message = "当前任务阶段无法暂停或继续" };
                         if (transfer.Control.IsPaused) transfer.Control.Resume(); else transfer.Control.Pause();
-                        lock (taskGate) { tasks[Text("id")].State = transfer.Control.IsPaused ? "paused" : "transferring"; tasks[Text("id")].Speed = 0; }
+                        task.State = transfer.Control.IsPaused ? "paused" : "transferring";
+                        task.Speed = 0;
                     }
                     break;
                 case "cancel": if (controls.TryGetValue(Text("id"), out var cancel)) cancel.Cancel.Cancel(); break;
@@ -508,16 +513,21 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
         controls[item.Id] = (control, cancel); bool entered = false;
         try
         {
-            await sendSlots.WaitAsync(cancel.Token); entered = true;item.State="connecting";
+            await sendSlots.WaitAsync(cancel.Token); entered = true;
+            lock (taskGate) item.State = "connecting";
             var connected = await service.ConnectAsync(target.Address, target.Port, null, target.Identity.Id, cancel.Token);
             await using (connected.Channel)
             {
-                item.State = "waiting";
+                lock (taskGate) item.State = "waiting";
                 await Transfers.SendAsync(connected.Channel, me, files.Select(f => f.Source).ToArray(), item.Id, new(settings.ChunkBytes, settings.LimitMiB), control, p => Progress(item, p), cancel.Token, offer => SetManifest(item, offer, files));
             }
             if (settings.Notifications) notice = "已完成发送：" + item.Name;
         }
-        catch (Exception ex) { bool offline=item.Message==OfflineReason;item.State = !offline&&cancel.IsCancellationRequested ? "cancelled" : "failed"; if(!offline)item.Message = ex.Message; item.Speed = 0; if (settings.Notifications) notice = "传输已结束：" + item.Message; }
+        catch (Exception ex)
+        {
+            SetTransferFailure(item, ex, cancel.IsCancellationRequested);
+            if (settings.Notifications) notice = "传输已结束：" + item.Message;
+        }
         finally { controls.TryRemove(item.Id, out var ignored); if(item.State!="failed")retrySources.TryRemove(item.Id,out _);foreach(var id in retrySources.Keys.Where(id=>!tasks.ContainsKey(id)).ToArray())retrySources.TryRemove(id,out _);foreach(var old in tasks.Values.Where(t=>t.State=="failed").OrderByDescending(t=>t.Created).Skip(100))retrySources.TryRemove(old.Id,out _);if (entered) sendSlots.Release(); await SaveHistoryAsync(); }
     }
     private async Task IncomingAsync(AuthenticatedConnection connection, CancellationToken ct)
@@ -550,7 +560,7 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
             },async (staging,token)=>
             {
                 if(task is null)return;
-                task.State="saving";task.Speed=0;
+                lock (taskGate) { task.State = "saving"; task.Speed = 0; }
                 // Previews are generated while verified files remain in the private staging directory.
                 if(settings.Thumbnails)
                 {
@@ -577,9 +587,19 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
         }
         catch (Exception ex)
         {
-            if (task is not null) { bool offline=task.Message==OfflineReason;task.State = !offline&&cancel.IsCancellationRequested ? "cancelled" : "failed"; if(!offline)task.Message = ex.Message; task.Speed = 0; }
+            if (task is not null) SetTransferFailure(task, ex, cancel.IsCancellationRequested);
         }
         finally { if (task is not null){ controls.TryRemove(task.Id, out var ignored); await SaveHistoryAsync();} }
+    }
+    private void SetTransferFailure(UiTask task, Exception error, bool cancelled)
+    {
+        lock (taskGate)
+        {
+            bool offline = task.Message == OfflineReason;
+            task.State = cancelled && !offline ? "cancelled" : "failed";
+            if (!offline) task.Message = error.Message;
+            task.Speed = 0;
+        }
     }
     private static bool IsFinished(string state) => state is "completed" or "failed" or "cancelled" or "rejected";
     public TransferNotificationSnapshot GetTransferNotificationSnapshot()

@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.27";
-    public const int AndroidCode=60;
+    public const string Version="0.7.28";
+    public const int AndroidCode=61;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.27\n• 图片和视频缩略图改用短地址。展开图片较多的传输任务时，进度刷新更快。\n• 关闭缩略图时立即释放已缓存的预览，重新打开后只加载进入视野的文件。";
+    public const string Notes="0.7.28\n• 传输进度卡片按状态显示操作。排队时可以取消，实际传输时可暂停，已暂停时可继续。\n• Android 进度统计更紧凑，速度和按钮在空间足够时并排。Windows 宽窗口也能在同一行查看任务与操作。\n• 失败原因单独显示一次，重试入口保留。接收完成后仍可查看保存位置。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

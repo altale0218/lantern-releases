@@ -43,6 +43,33 @@ async function checkProgressHistory(p,platform){
  await p.locator('[data-page="transfer"]:visible').first().click();
  await route(p,'transfer');
 }
+async function checkTaskPhases(p,platform){
+ const active=p.locator('[data-render-key="task-phase-example"]');
+ await p.evaluate(()=>{
+  window.tasksBeforePhases=fixture.tasks;
+  fixture.tasks=[{...fixture.tasks[0],id:'phase-example',kind:'files',direction:'send',
+   name:'虚构传输任务',files:[{id:'demo-file',name:'虚构文件.txt',mime:'text/plain',size:128}],
+   total:128,completed:32,state:'queued',speed:0}];
+  window.lantern.setState(fixture);
+ });
+ await p.locator('button[data-page="progress"]:visible').first().click();
+ await route(p,'progress');
+ check(!await active.locator('[data-pause]').count()&&await active.locator('[data-cancel]').count()===1,platform+' queued tasks retain cancel and cannot be paused');
+ const setPhase=phase=>p.evaluate(phase=>{
+  Object.assign(fixture.tasks[0],phase);
+  window.lantern.setState(fixture);
+ },phase);
+ await setPhase({state:'transferring',speed:64});
+ check(await active.getByRole('button',{name:'暂停任务'}).count()===1&&await active.locator('.task-rate b').innerText()==='64 B/s',platform+' active tasks show speed and pause');
+ await setPhase({state:'paused',speed:0});
+ check(await active.getByRole('button',{name:'继续任务'}).count()===1&&!await active.locator('.task-rate').count(),platform+' paused tasks show resume and no stale speed');
+ await setPhase({state:'failed',message:'虚构失败原因：目标设备离线'});
+ check(await active.getByText('虚构失败原因：目标设备离线',{exact:true}).count()===1,platform+' failure reason appears exactly once');
+ check(await active.getByRole('button',{name:'重试发送'}).count()===1&&!await active.locator('[data-pause]').count(),platform+' failed outgoing tasks retain a direct retry');
+ await p.evaluate(()=>{fixture.tasks=tasksBeforePhases;delete window.tasksBeforePhases;window.lantern.setState(fixture)});
+ await p.locator('button[data-page="transfer"]:visible').first().click();
+ await route(p,'transfer');
+}
 async function checkLazyThumbnails(p,platform){
  await p.evaluate(()=>{
   window.previousThumbnailTasks=fixture.tasks;
@@ -294,7 +321,8 @@ async function checkTouch(p,label){
   await checkNavigation(p,platform);
   await checkDiscoveredPairing(p,platform);
   await checkSendConfirmation(p,platform);
-   await checkProgressHistory(p,platform);
+  await checkProgressHistory(p,platform);
+  await checkTaskPhases(p,platform);
   await checkLazyThumbnails(p,platform);
   check(await p.locator('.release-send-card').count()===1,platform+' compact sending workspace');check(await p.locator('.orbit-art').count()===0,platform+' oversized decorative orbit removed');
   check(await p.locator('.first-connection').count()===0,platform+' paired users do not see first-use guide');check(await p.locator('.release-device-card .fingerprint').count()===0,platform+' device identifiers are no longer always visible');

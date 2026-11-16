@@ -31,6 +31,11 @@ try
  Check(started==4,"Exactly four file lanes should be admitted");
  var initial=(await State(0)).GetProperty("tasks").EnumerateArray().Where(t=>ids.Contains(t.GetProperty("id").GetString())).ToArray();
  var queued=initial.Where(t=>t.GetProperty("state").GetString()=="queued").ToArray();Check(queued.Length==12,"Remaining recipients must queue");
+ string queuedId=queued[0].GetProperty("id").GetString()!;
+ var pauseRejected=await Cmd(0,new{type="pause",id=queuedId});
+ Check(!pauseRejected.GetProperty("ok").GetBoolean(),"A queued task cannot be paused before transferring");
+ var stillQueued=(await State(0)).GetProperty("tasks").EnumerateArray().Single(t=>t.GetProperty("id").GetString()==queuedId);
+ Check(stillQueued.GetProperty("state").GetString()=="queued","Early pause must preserve the queued state");
  string cancelled=queued.Last().GetProperty("id").GetString()!;await Cmd(0,new{type="cancel",id=cancelled});
  var messageIds=new List<string>();foreach(var identity in identities.Skip(1).Take(16)){var result=await Cmd(0,new{type="chat-send",peerId=identity.Id,text="16 台设备排队传文件时，文字仍应及时送达 🔐"});Check(result.GetProperty("ok").GetBoolean(),"Message queue rejected");messageIds.Add(result.GetProperty("id").GetString()!);}
  bool messagesDone=false;
@@ -41,7 +46,7 @@ try
  Check(filesDone,"Fanout completion/cancellation timeout");
  int verified=0;for(int i=1;i<=16;i++){var incoming=(await State(i)).GetProperty("tasks").EnumerateArray().Where(t=>ids.Contains(t.GetProperty("id").GetString())).ToArray();if(incoming.Length==0)continue;Check(incoming.Length==1,"Recipient received duplicate task");var files=Directory.GetFiles(incoming[0].GetProperty("folder").GetString()!);Check(files.Length==1&&File.ReadAllBytes(files[0]).SequenceEqual(payload),"Recipient bytes differ");verified++;}
  Check(verified==15,"Exactly 15 recipients complete after one queued cancellation");Check(!(await State(17)).GetProperty("tasks").EnumerateArray().Any(),"Rejected 17th target must receive nothing");
- var report=new{version=AppRelease.Version,success=true,selectedRecipients=16,verifiedRecipients=verified,verifiedBytes=(long)verified*payload.Length,messages=16,concurrentFiles=4,queuedFiles=12,queuedCancellation=true,seventeenthRejected=true,selectionPreserved=true};
+ var report=new{version=AppRelease.Version,success=true,selectedRecipients=16,verifiedRecipients=verified,verifiedBytes=(long)verified*payload.Length,messages=16,concurrentFiles=4,queuedFiles=12,queuedCancellation=true,queuedPauseRejected=true,seventeenthRejected=true,selectionPreserved=true};
  await File.WriteAllTextAsync(Path.Combine(root,"fanout-result.json"),JsonSerializer.Serialize(report));Console.WriteLine(JsonSerializer.Serialize(report));Console.WriteLine("PASS 16-recipient authenticated fanout: queue bounds, 16 verified chat receipts during blocked files, isolated queued cancellation, byte-exact recipients and no rejected-target disclosure");
 }
 finally{gate.TrySetResult();foreach(var client in clients)await client.DisposeAsync();foreach(var host in hosts){string inbox=Path.Combine(host.DataDirectory,"Inbox");if(Directory.Exists(inbox))Directory.Delete(inbox,true);}}
