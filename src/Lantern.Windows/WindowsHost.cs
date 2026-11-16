@@ -7,8 +7,6 @@ namespace Lantern.Windows;
 
 public sealed class WindowsHost(Form owner) : IPlatformHost
 {
-    private readonly WindowsUpdateStore updates=new();
-    public Task<OtaPackage?> GetHostedUpdateAsync(CancellationToken ct)=>updates.GetAsync(ct);
     public string Platform => "Windows";
     private DateTime connectionRead;
     private LanConnectionStatus connection=LanConnectionStatus.Unknown;

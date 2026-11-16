@@ -31,6 +31,7 @@ try {
         Run 'Lantern.ChatTests' @((Join-Path $ArtifactsDirectory 'fixtures/chat'))
         Run 'Lantern.PairingTests' @((Join-Path $ArtifactsDirectory 'fixtures/pairing'))
         Run 'Lantern.OtaTests' @('--preferences',(Join-Path $ArtifactsDirectory 'fixtures/preferences'))
+        Run 'Lantern.OtaTests' @((Join-Path $ArtifactsDirectory 'fixtures/server-updates'))
     }
 }finally{Pop-Location}
 Write-Output 'PASS: selected build and regression checks. Generated output remains outside the source directory by default.'

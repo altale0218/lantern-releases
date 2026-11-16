@@ -16,15 +16,16 @@ public sealed partial class AndroidHost
             return checked((int)(Build.VERSION.SdkInt>=BuildVersionCodes.P?info.LongVersionCode:info.VersionCode));
         }
     }
-    public Task ValidateUpdateAsync(string file,OtaManifest manifest)
+    public Task ValidateUpdateAsync(string file,ServerRelease manifest)
     {
-        manifest.Validate();
+        if(manifest.Platform!="Android"||manifest.VersionCode is not >0)
+            throw new InvalidDataException("服务器缺少有效的 Android 发布版本号");
         var pm=activity.PackageManager!;
         var flags=Build.VERSION.SdkInt>=BuildVersionCodes.P?PackageInfoFlags.SigningCertificates:PackageInfoFlags.Signatures;
         var archive=pm.GetPackageArchiveInfo(file,flags)??throw new InvalidDataException("无法解析安卓安装包");
         var installed=pm.GetPackageInfo(activity.PackageName!,flags)!;
         long code=Build.VERSION.SdkInt>=BuildVersionCodes.P?archive.LongVersionCode:archive.VersionCode;
-        if(archive.PackageName!=activity.PackageName||archive.PackageName!=manifest.PackageId||code!=manifest.VersionCode||archive.VersionName!=manifest.Version||code<=ApplicationVersionCode)
+        if(archive.PackageName!=activity.PackageName||archive.PackageName!=AppRelease.PackageId||code!=manifest.VersionCode||archive.VersionName!=manifest.Version||code<=ApplicationVersionCode)
             throw new InvalidDataException("更新包包名或版本不匹配，不允许降级或重复安装");
         Android.Content.PM.Signature[] Signers(PackageInfo info)=>
             Build.VERSION.SdkInt>=BuildVersionCodes.P?info.SigningInfo?.GetApkContentsSigners()??[]:info.Signatures?.ToArray()??[];

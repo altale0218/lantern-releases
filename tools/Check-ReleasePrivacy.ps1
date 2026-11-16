@@ -6,6 +6,9 @@ $identifiers=@($env:USERNAME,$env:USER,$env:COMPUTERNAME)|Where-Object {$_ -and 
 $failures=[Collections.Generic.List[object]]::new();$count=0
 function Inspect([byte[]]$Bytes,[string]$Name){
     $text=[Text.Encoding]::UTF8.GetString($Bytes)+[Text.Encoding]::Unicode.GetString($Bytes)
+    # These public repository endpoints are part of the updater. The account name contains a local identifier as a substring.
+    $text=$text.Replace('https://api.github.com/repos/altale0218/lantern-releases/releases?per_page=30','[public release endpoint]')
+    $text=$text.Replace('https://github.com/altale0218/lantern-releases/releases/download/','[public release endpoint]')
     foreach($id in $identifiers){if($text.IndexOf($id,[StringComparison]::OrdinalIgnoreCase) -ge 0){$failures.Add(@{file=$Name;kind='local-build-identity'});break}}
     # Public vendor build paths are not treated as a maintainer's identity.
 }

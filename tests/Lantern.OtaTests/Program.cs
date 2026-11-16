@@ -1,97 +1,100 @@
-using System.Reflection;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Lantern.AppLogic;
 using Lantern.Core;
 using Lantern.Windows;
 
-void Assert(bool value,string text){if(!value)throw new Exception(text);}
-if(args[0]=="--preferences"){await PreferenceChecks.RunAsync(Path.GetFullPath(args[1]));return;}
-if(args[0]=="--startup"){await StartupChecks.RunAsync(Path.GetFullPath(args[1]));return;}
-if(args[0]=="--native-ota")
-{
-    var host=new Host("Android",Path.GetFullPath(args[1]));
-    await using var client=new AppController(host);await client.InitializeAsync(0);
-    var service=(LanService)typeof(AppController).GetField("service",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(client)!;
-    service.ConfirmPairing=(_,_)=>Task.FromResult(true);
-    var connection=await service.ConnectAsync("127.0.0.1",LanService.DefaultPort,args[2],null,CancellationToken.None);
-    string id=connection.Peer.Id;
-    await using(connection.Channel)await connection.Channel.SendJsonAsync(new{PairOnly=true},CancellationToken.None);
-    async Task<JsonElement> Cmd(object o)=>JsonSerializer.SerializeToElement(await client.DispatchAsync(JsonSerializer.SerializeToElement(o,AppController.Json)),AppController.Json);
-    Assert((await Cmd(new{type="ota-check",peerId=id})).GetProperty("ok").GetBoolean(),"Native Windows OTA check");
-    var state=JsonSerializer.SerializeToElement(await client.GetStateAsync(),AppController.Json);
-    Assert(state.GetProperty("ota").GetProperty("phase").GetString()=="available","Native hosted release offered");
-    await Cmd(new{type="ota-download"});
-    for(int i=0;i<600;i++)
-    {
-        state=JsonSerializer.SerializeToElement(await client.GetStateAsync(),AppController.Json);
-        var phase=state.GetProperty("ota").GetProperty("phase").GetString();
-        if(phase=="ready"){Console.WriteLine("NATIVE_OTA_VERIFIED "+new FileInfo(Path.Combine(host.DataDirectory,"OtaCache","update.apk")).Length);return;}
-        if(phase=="failed")throw new Exception(state.GetProperty("ota").GetProperty("message").GetString());
-        await Task.Delay(100);
-    }
-    throw new Exception("Native OTA download timeout");
-}
-var root=Path.GetFullPath(args[0]);Directory.CreateDirectory(root);
-var windows=new Host("Windows",Path.Combine(root,"Windows"));var android=new Host("Android",Path.Combine(root,"Android"));
-await using var pc=new AppController(windows);await pc.InitializeAsync(0);
-await using var phone=new AppController(android);await phone.InitializeAsync(0);
-LanService Service(AppController c)=>(LanService)typeof(AppController).GetField("service",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(c)!;
+if(args is ["--preferences",var profile]){await PreferenceChecks.RunAsync(Path.GetFullPath(profile));return;}
+string root=Path.GetFullPath(args[0]);
+var feed=new FakeServers();
+var android=new Host("Android",Path.Combine(root,"Android"));
+await using var phone=new AppController(android,new ServerUpdateClient(feed));
+await phone.InitializeAsync(0);
 JsonElement Element(object o)=>JsonSerializer.SerializeToElement(o,AppController.Json);
-async Task<JsonElement> Command(AppController c,object o)=>Element(await c.DispatchAsync(Element(o)));
-async Task<JsonElement> State()=>Element(await phone.GetStateAsync());
-async Task<string> Phase()=> (await State()).GetProperty("ota").GetProperty("phase").GetString()!;
-async Task WaitFinished(){for(int i=0;i<200;i++){if(await Phase() is not("downloading" or "verifying")){return;}await Task.Delay(30);}throw new Exception("OTA timeout");}
-async Task Pair()
+async Task<JsonElement> Cmd(AppController app,object command)=>Element(await app.DispatchAsync(Element(command)));
+async Task<JsonElement> Update(AppController app)=>Element(await app.GetStateAsync()).GetProperty("ota");
+async Task WaitPhase(AppController app,string phase)
 {
-    var code=(await Command(pc,new{type="open-pairing"})).GetProperty("code").GetString();
-    var oldPc=Service(pc).ConfirmPairing;var oldPhone=Service(phone).ConfirmPairing;Service(pc).ConfirmPairing=Service(phone).ConfirmPairing=(_,_)=>Task.FromResult(true);
-    var connected=await Service(phone).ConnectAsync("127.0.0.1",Service(pc).Port,code,null,CancellationToken.None);
-    await using(connected.Channel)await connected.Channel.SendJsonAsync(new{PairOnly=true},CancellationToken.None);
-    Service(pc).ConfirmPairing=oldPc;Service(phone).ConfirmPairing=oldPhone;
+    for(int i=0;i<150;i++)
+    {
+        var state=await Update(app);
+        if(state.GetProperty("phase").GetString()==phase)return;
+        await Task.Delay(25);
+    }
+    throw new Exception($"Expected {phase}: {await Update(app)}");
 }
-await Pair();var pcId=Element(await pc.GetStateAsync()).GetProperty("self").GetProperty("id").GetString()!;
-var check=new{type="ota-check",peerId=pcId};
-Assert((await Command(phone,check)).GetProperty("ok").GetBoolean()&&await Phase()=="idle","No package check");
-string apk=Path.Combine(root,"payload.apk");await File.WriteAllBytesAsync(apk,RandomNumberGenerator.GetBytes(3*1024*1024));
-var manifest=new OtaManifest(1,AppRelease.PackageId,AppRelease.Version,AppRelease.AndroidCode,new FileInfo(apk).Length,Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(apk))),"更新日志：测试加密 OTA");
-windows.Package=new(manifest,apk);
-Assert((await Command(phone,check)).GetProperty("ok").GetBoolean()&&await Phase()=="available","New authenticated version");
-Assert(!(await Command(phone,new{type="ota-install",path=apk})).GetProperty("ok").GetBoolean(),"No installation before verified download");
-windows.Package=new(manifest with{Notes="Changed"},apk);
-await Command(phone,new{type="ota-download"});await WaitFinished();Assert(await Phase()=="failed","Manifest changed since check rejected");
-windows.Package=new(manifest,apk);await Command(phone,check);
-await Command(phone,new{type="ota-download",path="C:/Windows/notepad.exe"});await WaitFinished();
-Assert(await Phase()=="ready"&&android.Validations>0,"Verified download becomes installable");
-string local=Path.Combine(android.DataDirectory,"OtaCache","update.apk");Assert(File.ReadAllBytes(apk).SequenceEqual(File.ReadAllBytes(local)),"Downloaded APK SHA256 matches");
+void Assert(bool condition,string message){if(!condition)throw new Exception(message);}
+bool Ok(JsonElement result)=>result.GetProperty("ok").GetBoolean();
+var check=new{type="ota-check"};
+var download=new{type="ota-download"};
+var install=new{type="ota-install"};
+var clear=new{type="ota-clear"};
+
+Assert(Ok(await Cmd(phone,check)),"Stable channel reports only stable releases");
+await WaitPhase(phone,"current");
+Assert(!feed.Requests.Any(r=>r.Contains("/download/")),"Current channel never downloads an installer");
+Assert(Ok(await Cmd(phone,new{type="ota-options",channel="beta",source="auto"})),"Choose beta and automatic source");
+feed.FailGitHub=true;
+Assert(Ok(await Cmd(phone,check)),"Gitee works even when GitHub is rate-limited");
+var available=await Update(phone);
+Assert(available.GetProperty("release").GetProperty("source").GetString()=="gitee","Fallback verified");
+Assert(!Ok(await Cmd(phone,install)),"User must first download and verify");
+feed.BadPayload=true;
+await Cmd(phone,download);
+await Task.Delay(100);
+await WaitPhase(phone,"available");
+Assert(!File.Exists(Path.Combine(android.DataDirectory,"OtaCache","Lantern-Android.apk")),"Changed bytes never become installable");
+feed.BadPayload=false;
+android.RejectSignature=true;
+await Cmd(phone,download);
+await Task.Delay(100);
+await WaitPhase(phone,"available");
+Assert(android.Validations==1&&android.Installs==0,"APK still passes platform signature verification");
+android.RejectSignature=false;
+await Cmd(phone,download);
+await WaitPhase(phone,"ready");
+Assert(!Ok(await Cmd(phone,new{type="ota-options",channel="stable",source="auto"})),"A cached beta cannot be installed as stable");
 android.CanInstallUpdates=false;
-Assert((await Command(phone,new{type="ota-install-permission"})).GetProperty("ok").GetBoolean()&&android.PermissionRequests==1,"Guide opens Android installation permission");
-Assert((await Command(phone,new{type="ota-install"})).GetProperty("ok").GetBoolean()&&android.PermissionRequests==2&&android.Installs==0&&File.Exists(local),"Denied installation permission retains verified package");
+Assert(Ok(await Cmd(phone,install))&&android.PermissionRequests==1&&android.Installs==0,"Android uses its system permission dialog");
 android.CanInstallUpdates=true;
-Assert((await Command(phone,new{type="ota-install"})).GetProperty("ok").GetBoolean()&&android.Installs==1,"Explicit user installation command");
-Assert(!(await State()).ToString().Contains(local),"Private update path not exposed in bridge");
-var restartedHost=new Host("Android",Path.Combine(root,"AndroidRestart"));
-var restartedCache=Directory.CreateDirectory(Path.Combine(restartedHost.DataDirectory,"OtaCache")).FullName;
-File.Copy(local,Path.Combine(restartedCache,"update.apk"),true);
-File.Copy(Path.Combine(Path.GetDirectoryName(local)!,"ready.json"),Path.Combine(restartedCache,"ready.json"),true);
-await using(var restarted=new AppController(restartedHost))
+Assert(Ok(await Cmd(phone,install))&&android.Installs==1,"Android opens the native installer after validation");
+Assert(!((await Update(phone)).ToString().Contains(android.DataDirectory)),"Web state has no private absolute path");
+
+var cachedHost=new Host("Android",Path.Combine(root,"Restart"));
+await using(var initialized=new AppController(cachedHost,new ServerUpdateClient(new FakeServers())))
+    await initialized.InitializeAsync(0);
+var sourceCache=Path.Combine(android.DataDirectory,"OtaCache");
+var cache=Directory.CreateDirectory(Path.Combine(cachedHost.DataDirectory,"OtaCache")).FullName;
+File.Copy(Path.Combine(sourceCache,"Lantern-Android.apk"),Path.Combine(cache,"Lantern-Android.apk"),true);
+File.Copy(Path.Combine(sourceCache,"server-ready.json"),Path.Combine(cache,"server-ready.json"),true);
+await File.WriteAllTextAsync(Path.Combine(cachedHost.DataDirectory,"settings.json"),JsonSerializer.Serialize(new AppSettings{UpdateChannel="beta"},AppController.Json));
+await using(var restarted=new AppController(cachedHost,new ServerUpdateClient(new FakeServers{FailGitHub=true,FailGitee=true})))
 {
     await restarted.InitializeAsync(0);
-    var restored=Element(await restarted.GetStateAsync()).GetProperty("ota");
-    Assert(restored.GetProperty("phase").GetString()=="ready"&&restartedHost.Validations>0,"Verified cache is restored without connected PC");
-    Assert((await Command(restarted,new{type="ota-install"})).GetProperty("ok").GetBoolean()&&restartedHost.Installs==1,"Cached package installs after restart");
+    await WaitPhase(restarted,"ready");
+    Assert(Ok(await Cmd(restarted,install))&&cachedHost.Installs==1,"Verified Android APK survives restart and offline install");
 }
-Assert(File.Exists(Path.Combine(restartedCache,"update.apk")),"Closing controller retains verified APK");
-await Command(phone,new{type="ota-clear"});Assert(!File.Exists(local)&&await Phase()=="idle","Delete cached package");
-android.RejectSignature=true;await Command(phone,check);await Command(phone,new{type="ota-download"});await WaitFinished();
-Assert(await Phase()=="failed"&&!File.Exists(local),"Platform signature rejection never installs or retains package");android.RejectSignature=false;
-windows.Package=new(manifest with{Sha256=new string('0',64)},apk);await Command(phone,check);await Command(phone,new{type="ota-download"});await WaitFinished();
-Assert(await Phase()=="failed"&&!File.Exists(local),"Advertised hash mismatch rejected");
-windows.Package=new(manifest with{VersionCode=18},apk);await Command(phone,check);Assert(await Phase()=="current","Same/older code not offered");
-windows.Package=new(manifest,apk);await Command(phone,check);await Command(phone,new{type="forget",id=pcId});
-await Command(phone,new{type="ota-download"});await WaitFinished();Assert(await Phase()=="failed","Revoked trust blocks download");
-foreach(var bad in new[]{manifest with{PackageId="other.app"},manifest with{Size=OtaManifest.MaxBytes+1},manifest with{Sha256="invalid"},manifest with{Protocol=2}})
-{bool rejected=false;try{bad.Validate();}catch(InvalidDataException){rejected=true;}Assert(rejected,"Bad manifest rejected");}
+Assert(File.Exists(Path.Combine(cache,"Lantern-Android.apk")),"Closing the app retains the verified download");
+await Cmd(phone,clear);
+feed.FailGitHub=false;
+feed.ConflictingHashes=true;
+Assert(!Ok(await Cmd(phone,check)),"Same-version hash conflict blocks download");
+feed.ConflictingHashes=false;
+feed.LowAndroidCode=true;
+Assert(!Ok(await Cmd(phone,check)),"Manifest with lower Android versionCode is rejected");
+feed.LowAndroidCode=false;
+feed.ExternalRedirect=true;
+Assert(!Ok(await Cmd(phone,check)),"A redirection to an uncontrolled host is rejected");
+feed.ExternalRedirect=false;
+var windows=new Host("Windows",Path.Combine(root,"Windows"));
+await using var desktop=new AppController(windows,new ServerUpdateClient(feed));
+await desktop.InitializeAsync(0);
+Assert(Ok(await Cmd(desktop,new{type="ota-options",channel="beta",source="github"})),"Manual GitHub selection works");
+Assert(Ok(await Cmd(desktop,check)),"Windows checks public servers with no mobile device");
+await Cmd(desktop,download);
+await WaitPhase(desktop,"ready");
+Assert(Ok(await Cmd(desktop,install))&&windows.OpenedFolders==1&&windows.Installs==0,"Windows just opens the verified ZIP's folder");
 var reducer=new TaskbarProgressReducer();TransferNotificationSnapshot Snapshot(params TransferNotificationTask[] t)=>new(false,false,false,t);
 var active=new TransferNotificationTask("one","transferring","send",100,25,0);var second=active with{Id="two",Total=300,Completed=75};
 Assert(reducer.Update(Snapshot(active,second),true,0)==new TaskbarFrame(TaskbarState.Normal,2500,10000),"Weighted multiple tasks, independent of notifications switch");
@@ -101,22 +104,78 @@ Assert(reducer.Update(Snapshot(active with{State="failed"}),true,3).State==Taskb
 Assert(reducer.Update(Snapshot(active with{State="failed"}),true,5004).State==TaskbarState.None,"Error clears after timeout");
 Assert(reducer.Update(Snapshot(active),false,5005).State==TaskbarState.None,"Opt out clears");
 Assert(reducer.Update(Snapshot(active with{State="completed"}),true,5006).State==TaskbarState.None,"Completion clears");
-Console.WriteLine("PASS OTA real TCP/PAKE: no package, encrypted check/download, changed manifest, byte integrity, platform signature gate, explicit installation, private path isolation, cache deletion, downgrade/malformed manifest and revoked trust rejection. PASS taskbar multi-task/paused/saving/error/timeout/opt-out/completion policy.");
+Console.WriteLine("PASS server OTA: channels, automatic fallback, manual provider, HTTPS origin, checksum conflict, bad bytes, signature rejection, Android rollback and permission, restart/cache, and manual Windows ZIP installation.");
 
 sealed class Host(string platform,string directory):IPlatformHost
 {
-    public string Platform=>platform;public string DeviceName=>"OTA test";public string DataDirectory=>directory;public ISecretStore Secrets{get;}=new Secrets();
-    public int Code=18;public int ApplicationVersionCode=>Code;public OtaPackage? Package;public int Validations,Installs,PermissionRequests;public bool RejectSignature;
+    public string Platform=>platform;
+    public string DeviceName=>"Server OTA fixture";
+    public string DataDirectory=>directory;
+    public ISecretStore Secrets {get;}=new Secrets();
     public bool CanInstallUpdates {get;set;}=true;
+    public bool RejectSignature {get;set;}
+    public int Validations,Installs,PermissionRequests,OpenedFolders;
     public Task OpenUpdatePermissionAsync(){PermissionRequests++;return Task.CompletedTask;}
-    public Task<OtaPackage?> GetHostedUpdateAsync(CancellationToken ct)=>Task.FromResult(Package);
-    public Task ValidateUpdateAsync(string file,OtaManifest m){Validations++;if(RejectSignature)throw new IOException("Test platform: signature mismatch");return Task.CompletedTask;}
+    public Task ValidateUpdateAsync(string file,ServerRelease manifest)
+    {
+        Validations++;
+        if(RejectSignature)throw new CryptographicException("Fixture signature mismatch");
+        if(manifest.VersionCode!=41)throw new InvalidDataException("Fixture version code mismatch");
+        return Task.CompletedTask;
+    }
     public Task InstallUpdateAsync(string file){Installs++;return Task.CompletedTask;}
     public Task<IReadOnlyList<PickedFile>> PickAsync()=>Task.FromResult<IReadOnlyList<PickedFile>>([]);
-    public Task OpenFolderAsync(string f)=>Task.CompletedTask;public Task<string?> ThumbnailAsync(string f,string m)=>Task.FromResult<string?>(null);
+    public Task OpenFolderAsync(string folder){OpenedFolders++;return Task.CompletedTask;}
+    public Task<string?> ThumbnailAsync(string f,string m)=>Task.FromResult<string?>(null);
 }
+
 sealed class Secrets:ISecretStore
 {
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string,string> values=new();
-    public Task<string?> GetAsync(string k)=>Task.FromResult(values.GetValueOrDefault(k));public Task SetAsync(string k,string v){values[k]=v;return Task.CompletedTask;}public Task RemoveAsync(string k){values.TryRemove(k,out _);return Task.CompletedTask;}
+    public Task<string?> GetAsync(string key)=>Task.FromResult(values.GetValueOrDefault(key));
+    public Task SetAsync(string key,string value){values[key]=value;return Task.CompletedTask;}
+    public Task RemoveAsync(string key){values.TryRemove(key,out _);return Task.CompletedTask;}
 }
+
+sealed class FakeServers : HttpMessageHandler
+{
+    private static readonly byte[] Payload=[1,3,3,7];
+    private static readonly string Checksum=Convert.ToHexString(SHA256.HashData(Payload)).ToLowerInvariant();
+    public bool FailGitHub,FailGitee,BadPayload,ConflictingHashes,LowAndroidCode,ExternalRedirect;
+    public System.Collections.Concurrent.ConcurrentQueue<string> Requests {get;}=new();
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)
+    {
+        var url=request.RequestUri!;
+        string route=url.AbsolutePath;
+        Requests.Enqueue(url.AbsoluteUri);
+        bool github=url.Host.EndsWith("github.com",StringComparison.Ordinal);
+        if(github?FailGitHub:FailGitee)return Reply(HttpStatusCode.Forbidden);
+        if(route.EndsWith("/releases",StringComparison.Ordinal))
+        {
+            string releases=github?"https://github.com/altale0218/lantern-releases/releases/download/":"https://gitee.com/altalatic/lantern-releases/releases/download/";
+            object Entry(string tag,bool prerelease)=>new
+            {
+                tag_name=tag,prerelease,draft=false,body="Fixture versionCode "+(LowAndroidCode?1:41),
+                assets=new[]{"Lantern-Android.apk","Lantern-Windows.zip","SHA256SUMS.txt"}
+                    .Select(asset=>new{name=asset,browser_download_url=releases+tag+"/"+asset,size=github?Payload.Length:(int?)null})
+            };
+            return Reply(HttpStatusCode.OK,new StringContent(JsonSerializer.Serialize(new[]{Entry("v0.7.6",false),Entry("v0.7.8",true)})));
+        }
+        if(ExternalRedirect)
+        {
+            var redirect=new HttpResponseMessage(HttpStatusCode.Redirect);
+            redirect.Headers.Location=new Uri("https://example.invalid/replacement");
+            return Task.FromResult(redirect);
+        }
+        if(route.EndsWith("SHA256SUMS.txt",StringComparison.Ordinal))
+        {
+            var hash=ConflictingHashes&&!github?new string('a',64):Checksum;
+            return Reply(HttpStatusCode.OK,new StringContent($"{hash}  Lantern-Android.apk\n{hash}  Lantern-Windows.zip\n"));
+        }
+        return Reply(HttpStatusCode.OK,new ByteArrayContent(BadPayload?[1,3,3,6]:Payload));
+    }
+    private static Task<HttpResponseMessage> Reply(HttpStatusCode code,HttpContent? body=null)=>
+        Task.FromResult(new HttpResponseMessage(code){Content=body});
+}
+

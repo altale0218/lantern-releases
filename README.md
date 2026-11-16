@@ -2,7 +2,7 @@
 
 让分享回归设备之间。快速直连，尊重每一份隐私。
 
-局域网文件传输及设备聊天工具，提供 Windows 与 Android 客户端，以及 iPhone 与 iPad 通用项目。当前源码版本 **0.7.6**，Android versionCode **39**。本仓库准备包仅含源码、项目资源与开发文档，不含已签名客户端、个人设备数据或原始开发历史。
+局域网文件传输及设备聊天工具，提供 Windows 与 Android 客户端，以及 iPhone 与 iPad 通用项目。当前源码版本 **0.7.7**，Android versionCode **40**。本仓库准备包仅含源码、项目资源与开发文档，不含已签名客户端、个人设备数据或原始开发历史。
 
 ## 功能
 
@@ -11,9 +11,9 @@
 - 多设备发现、独立任务、群发、进度/速度统计与设备聊天记录。
 - Windows 支持拖拽、文件右键操作、通知、任务栏进度及接收目录选择。
 - Android 在本机解密和校验后保存到公开目录；支持通知与系统栏适配。
-- Android 可通过已配对的 Windows 获取配套 APK 和更新日志。
+- Android 和 Windows 直接连接发布服务器检查并下载更新，支持自动选源和分别检查稳定版、测试版。
 - 已配对设备之间可进行独立双向连接测速；测试数据加密、校验且不落盘。
-- 安卓 APK 与 Windows 免安装包独立提供，Windows 内配套 APK 支持局域网 OTA。
+- 安卓 APK 与 Windows ZIP 分别发布。安卓通过系统安装界面升级，Windows 由用户手动升级。
 - 共享深浅主题、字号与界面缩放、快捷设备入口、短页面过渡。
 - iPhone 和 iPad 目标共享协议与界面资源，使用 UIKit 导航、系统文件选择器、Quick Look 与本机钥匙串。
 - 0.7.5 起四类设备使用同一 Bonjour 服务发现对方，配对需要匹配码和双方确认。发现受网络或系统授权限制时，可输入局域网 IP 连接。
@@ -66,7 +66,7 @@ ui/index.html 是离线演示，示例设备、地址、指纹和文件均为虚
 
 欢迎阅读 [贡献指南](CONTRIBUTING.md) 后提交问题和改进。测试安装包与更新日志见 [GitHub 发行页](https://github.com/altale0218/lantern-releases/releases) 和 [Gitee 发行页](https://gitee.com/altalatic/lantern-releases/releases)。
 
-Windows 客户端不支持互联网在线更新，请前往本项目 GitHub 仓库的 Releases 页面下载最新版并按包内说明在原目录手动更新。Windows 向已认证安卓设备提供局域网 OTA 的功能保持可用。
+更新中心用 HTTPS 访问公开发行页对应的服务器，不依赖局域网配对。Android 安装前同时校验 SHA-256、包名、版本和原应用签名。Windows 下载并校验 ZIP 后由用户手动更新。
 
 ## 安卓紧凑聊天预览
 

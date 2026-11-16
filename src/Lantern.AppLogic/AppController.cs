@@ -34,8 +34,7 @@ public interface IPlatformHost
     Task OpenLocalFileAsync(string file,bool reveal,bool received)=>Task.FromException(new IOException("此平台不支持此操作"));
     Task<Stream> OpenReceivedPreviewAsync(string path, CancellationToken token) => Task.FromResult<Stream>(DocumentPreview.OpenLocal(path));
     int ApplicationVersionCode=>AppRelease.AndroidCode;
-    Task<OtaPackage?> GetHostedUpdateAsync(CancellationToken ct)=>Task.FromResult<OtaPackage?>(null);
-    Task ValidateUpdateAsync(string file,OtaManifest manifest)=>Task.FromException(new IOException("此平台不支持安装更新"));
+    Task ValidateUpdateAsync(string file,ServerRelease manifest)=>Task.FromException(new IOException("此平台不支持安装更新"));
     Task InstallUpdateAsync(string file)=>Task.FromException(new IOException("此平台不支持安装更新"));
     bool CanInstallUpdates=>false;
     Task OpenUpdatePermissionAsync()=>Task.FromException(new IOException("此平台不支持安装权限设置"));
@@ -75,6 +74,8 @@ public sealed class UiTask
 }
 public sealed class AppSettings
 {
+    public string UpdateSource { get; set; } = "auto";
+    public string UpdateChannel { get; set; } = "stable";
     public string Theme { get; set; } = "system";
     public int UiScale { get; set; } = 100;
     public int FontScale { get; set; } = 100;
@@ -95,7 +96,7 @@ public sealed class AppSettings
     public int ChunkBytes { get; set; } = 1048576;
     public int LimitMiB { get; set; }
 }
-public sealed partial class AppController(IPlatformHost host) : IAsyncDisposable
+public sealed partial class AppController(IPlatformHost host,ServerUpdateClient? updateClient=null) : IAsyncDisposable
 {
     public string ThemePreference => settings.Theme;
     public bool AllowFileDrop => settings.AllowFileDrop;
@@ -205,7 +206,7 @@ public sealed partial class AppController(IPlatformHost host) : IAsyncDisposable
         UiTask[] snapshot; lock (taskGate) snapshot = tasks.Values.OrderByDescending(t => t.Created).ToArray();
         // Native source paths are persisted locally, never exposed through the page bridge.
         var visibleTasks=snapshot.Select(t=>new{t.Id,t.BatchId,t.Kind,t.ChatText,t.ConversationKey,t.PeerId,t.Peer,t.Name,t.Direction,t.State,t.Total,t.Completed,t.Speed,t.Created,t.Message,t.Folder,files=t.Files.Select(f=>new{f.Id,f.Name,f.Mime,f.Size,f.Completed,preview=settings.Thumbnails?f.Preview:null,f.Deleted,canOpen=!f.Deleted&&(t.Direction=="send"?f.LocalPath is not null:t.Folder is not null)})});
-        return new { mode = "native", version=AppRelease.Version, releaseNotes=new{version=AppRelease.Version,notes=AppRelease.Notes,showOnStartup=releaseUnseen}, ota, canInstallUpdates=host.CanInstallUpdates, speedTest, hostedUpdate=host.Platform=="Windows"?(await host.GetHostedUpdateAsync(life.Token))?.Manifest:null, self = me, systemTheme = host.SystemTheme, systemFontScale = host.SystemFontScale, address = Addresses(), port = service.Port, inbox = host.ReceiveLocation, settings, transferNotifications = host.TransferNotificationStatus, connection = host.ConnectionStatus, devices, tasks = visibleTasks,
+        return new { mode = "native", version=AppRelease.Version, releaseNotes=new{version=AppRelease.Version,notes=AppRelease.Notes,showOnStartup=releaseUnseen}, ota, canInstallUpdates=host.CanInstallUpdates, speedTest, self = me, systemTheme = host.SystemTheme, systemFontScale = host.SystemFontScale, address = Addresses(), port = service.Port, inbox = host.ReceiveLocation, settings, transferNotifications = host.TransferNotificationStatus, connection = host.ConnectionStatus, devices, tasks = visibleTasks,
             pending = pending.Select(p => new { id = p.Key, peer = p.Value.Offer.Sender.Name, count = p.Value.Offer.Files.Length, total = p.Value.Offer.Total }).ToArray(),
             pairingRequests=pairingRequests.Values.Select(p=>new{id=p.Id,peer=p.Challenge.Peer,verificationCode=p.Challenge.VerificationCode,outgoing=p.Challenge.Outgoing,expires=p.Expires,answered=p.Answer.Task.IsCompleted,accepted=p.Answer.Task.IsCompletedSuccessfully&&p.Answer.Task.Result}).ToArray(),
             pairingBusy=pairingOperation is {IsCompleted:false},
@@ -247,7 +248,8 @@ public sealed partial class AppController(IPlatformHost host) : IAsyncDisposable
                 case "chat-send": return await SendChatAsync(Text("peerId"),Text("text"));
                 case "chat-retry": return await RetryChatAsync(Text("id"));
                 case "release-seen": await AcknowledgeReleaseAsync();return new{ok=true};
-                case "ota-check": return await CheckUpdateAsync(Text("peerId"));
+                case "ota-options": return await SetUpdateOptionsAsync(Text("channel"),Text("source"));
+                case "ota-check": return await CheckUpdateAsync();
                 case "ota-download": return StartUpdateDownload();
                 case "ota-install": return await InstallUpdateAsync();
                 case "ota-install-permission":
@@ -256,7 +258,7 @@ public sealed partial class AppController(IPlatformHost host) : IAsyncDisposable
                 case "ota-cancel": try{otaCancel?.Cancel();}catch(ObjectDisposedException){}return new{ok=true};
                 case "ota-clear":
                     await StopStartupUpdateCheckAsync();
-                    if(host.Platform!="Android"||!otaGate.Wait(0))throw new IOException("更新操作正在进行");
+                    if(!SupportsServerUpdates||!otaGate.Wait(0))throw new IOException("更新操作正在进行");
                     try{ClearUpdateFiles();ota=new();return new{ok=true,message="更新缓存已删除"};}finally{otaGate.Release();}
                 case "refresh-devices":
                     lock (addressGate) addressSnapshot = default;
@@ -316,7 +318,6 @@ public sealed partial class AppController(IPlatformHost host) : IAsyncDisposable
                 case "cancel": if (controls.TryGetValue(Text("id"), out var cancel)) cancel.Cancel.Cancel(); break;
                 case "forget":
                     CancelSpeedForPeer(Text("id"));
-                    if(ota.PeerId==Text("id"))try{otaCancel?.Cancel();}catch(ObjectDisposedException){}
                     foreach (var task in tasks.Values.Where(t => t.PeerId == Text("id"))) if (controls.TryGetValue(task.Id, out var c)) c.Cancel.Cancel();
                     await trust.ForgetAsync(Text("id")); return new { ok = true, message = "已撤销设备信任" };
                 case "open-folder":
@@ -488,7 +489,6 @@ public sealed partial class AppController(IPlatformHost host) : IAsyncDisposable
     {
         if(connection.FirstMessage is {} speed&&speed.TryGetProperty("SpeedTest",out _)){await ServeSpeedTestAsync(connection,speed,ct);return;}
         if(connection.FirstMessage is {} chat&&chat.TryGetProperty("Chat",out _)){await ReceiveChatAsync(connection,chat,ct);return;}
-        if(connection.FirstMessage is {} first&&first.TryGetProperty("Ota",out _)){await ServeUpdateAsync(connection,first,ct);return;}
         CancelSpeedForTransfer();
         // Pair-only sessions close immediately; transfer sessions begin with an encrypted manifest.
         var authenticatedTrust=await trust.FindAsync(connection.Peer.Id)??throw new UnauthorizedAccessException();
@@ -573,6 +573,6 @@ public sealed partial class AppController(IPlatformHost host) : IAsyncDisposable
         if(Interlocked.Exchange(ref disposed,1)!=0)return;
         life.Cancel();CancelPairing(); foreach (var c in controls.Values)try{c.Cancel.Cancel();}catch(ObjectDisposedException){}
         if (service is not null) await service.DisposeAsync();
-        await startupUpdateJob;await Task.WhenAll(outgoing.Values);if(pairingOperation is {} pairing)await pairing; await SaveHistoryAsync();CryptographicOperations.ZeroMemory(historyKey); life.Dispose();
+        await startupUpdateJob;await Task.WhenAll(outgoing.Values);serverUpdates.Dispose();if(pairingOperation is {} pairing)await pairing; await SaveHistoryAsync();CryptographicOperations.ZeroMemory(historyKey); life.Dispose();
     }
 }

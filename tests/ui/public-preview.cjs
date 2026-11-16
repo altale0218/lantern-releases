@@ -33,15 +33,16 @@ async function checkTouch(p,label){
   await p.locator('button[data-page="transfer"]:visible').first().click();await route(p,'transfer');check(await p.locator('button[data-page="transfer"][aria-current="page"]:visible').count()===1,platform+' navigation exposes current page');
   for(const theme of ['light','dark']){await p.evaluate(theme=>{fixture.mode='preview';fixture.settings.theme=theme;window.lantern.setState(fixture)},theme);await p.screenshot({path:path.join(output,platform.toLowerCase()+'-'+theme+'.png')});check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),platform+' '+theme+' home fits viewport');if(theme==='dark')check(await p.locator('.release-send-card .drop-area').evaluate(e=>getComputedStyle(e).backgroundColor)==='rgb(13, 16, 22)',platform+' theme colors switch atomically without a light flash')}
   for(const theme of ['light','dark']){
-   await p.evaluate(theme=>{fixture.settings.theme=theme;fixture.hostedUpdate={version:'0.6.11',size:1048576,notes:'示例未来版本'};window.lantern.setState(fixture)},theme);
+   await p.evaluate(theme=>{fixture.settings.theme=theme;window.lantern.setState(fixture)},theme);
    for(const name of ['settings','progress','history','transfer']){
     await p.locator('button[data-page="'+name+'"]:visible').first().click();await route(p,name);await checkTouch(p,platform+' '+theme+' '+name);
     check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),platform+' '+theme+' '+name+' fits viewport');
    }
    await p.locator('[data-action="open-updates"]:visible').first().click();await route(p,'updates');await checkTouch(p,platform+' '+theme+' update center');
    await p.screenshot({path:path.join(output,platform.toLowerCase()+'-updates-'+theme+'.png'),fullPage:true});const text=await p.locator('.update-layout').innerText();
-   check(platform==='Windows'?text.includes('Windows 客户端不支持互联网在线更新，请前往 GitHub 下载最新版并手动更新。'):!text.includes('Windows 客户端不支持互联网在线更新'),platform+' '+theme+' platform-specific update instructions');
-   check(platform==='Windows'?await p.locator('[data-render-key="ota-windows"]').count()===1:await p.locator('[data-action="ota-check"]').count()===1,platform+' '+theme+' Android LAN OTA retained');
+   check(platform==='Windows'?text.includes('随后由你手动更新'):text.includes('通过互联网访问发布服务器'),platform+' '+theme+' platform-specific update instructions');
+   check(await p.locator('#ota-source').inputValue()==='auto' && await p.locator('#ota-channel').inputValue()==='stable',platform+' '+theme+' default update source and channel');
+   check(await p.locator('[data-action="ota-check"]').isEnabled()&&await p.locator('#ota-peer').count()===0,platform+' '+theme+' server updates work without a paired PC');
    check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),platform+' '+theme+' update instructions fit viewport');
    await p.locator('[data-action="secondary-back"]:visible').first().click();await route(p,'transfer');
   }

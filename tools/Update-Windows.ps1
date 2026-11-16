@@ -85,10 +85,6 @@ try {
             if(Test-Path -LiteralPath $obsolete -PathType Leaf){Remove-Item -LiteralPath $obsolete -Force}
         }
     }
-    $updates=Join-Path $targetRoot 'Updates'
-    foreach($apk in Get-ChildItem -LiteralPath $updates -Filter '*.apk' -File -ErrorAction SilentlyContinue) {
-        if($apk.Name -ne 'Lantern-Android.apk'){Assert-NoLink $apk.FullName $targetRoot;Remove-Item -LiteralPath $apk.FullName -Force}
-    }
     Copy-Item -LiteralPath (Join-Path $payloadRoot 'release-files.json') -Destination $oldManifest -Force
     Write-Output "已在原路径更新到 $($manifest.version)：$targetRoot；配对、设置与记录目录保留。"
     if(-not $NoLaunch){Start-Process -FilePath (Join-Path $targetRoot 'Lantern.exe') -WorkingDirectory $targetRoot -WindowStyle Hidden}
