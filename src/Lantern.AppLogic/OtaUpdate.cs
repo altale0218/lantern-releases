@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.9";
-    public const int AndroidCode=42;
+    public const string Version="0.7.10";
+    public const int AndroidCode=43;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.9\n• 精简传输中心，选择文件更直接；Windows 关闭拖拽后同步隐藏拖拽提示。\n• 页面立即切换，短动效不阻塞操作；键盘切页后聚焦新标题。\n• 双端显示进行中的文件任务数，重排进度统计和展开入口，并优化低速读数。";
+    public const string Notes="0.7.10\n• 发送时可搜索在线、已配对的设备。搜索不会清除已选目标，离线设备可单独取消选中。\n• 长文件列表按页查看和预览，横屏与高字号下确认按钮保持可见，接收设备可独立滚动。\n• 自动刷新与手动刷新共用状态。发送中防止重复提交，失败时保留文件和已选设备。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

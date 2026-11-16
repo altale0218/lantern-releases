@@ -34,6 +34,46 @@ async function checkNavigation(p,platform){
   await p.evaluate(()=>{delete fixture.settings.allowFileDrop;window.lantern.setState(fixture)});
  }
 }
+async function checkSendConfirmation(p,platform){
+ await p.evaluate(()=>{
+  const devices=Array.from({length:8},(_,i)=>({...fixture.devices[0],id:'fictional-target-'+i,name:'虚构设备 '+i,conversationKey:'test-'+i}));
+  devices.push({...devices[0],id:'fictional-unpaired',name:'虚构未配对设备',trusted:false});
+  window.lantern.setState({...fixture,devices});
+  const files=Array.from({length:33},(_,i)=>({id:String(i),name:'演示附件 '+i+'.txt',size:512,mime:'text/plain'}));
+  window.lantern.acceptDropped({ok:true,selection:files,selectionId:'example-selection'});
+ });
+ const dialog=p.getByRole('dialog',{name:'选择发送对象'}),search=dialog.getByRole('searchbox');
+ check(await dialog.locator('.selection-file').count()===24,platform+' long selections initially mount their first file page');
+ await dialog.locator('.send-file-disclosure summary').click();
+ await dialog.locator('[data-action="send-more-files"]').click();
+ check(await dialog.locator('.selection-file').count()===33,platform+' additional selected files stay available');
+ await dialog.locator('.send-file-disclosure summary').click();
+ check(await dialog.getByRole('checkbox').count()===8,platform+' unpaired targets are excluded');
+ await search.fill('设备 0');
+ await dialog.getByRole('checkbox').click();
+ await search.fill('设备 1');
+ await dialog.getByRole('checkbox').click();
+ check((await dialog.locator('.send-filter-note').innerText()).includes('1 台已选设备'),platform+' search keeps selected devices outside its matches');
+ const send=dialog.locator('[data-action="send-selection"]');
+ check((await send.innerText()).includes('2 台设备'),platform+' confirmation shows the complete target count');
+ await p.evaluate(()=>window.lantern.setState({...fixture,devices:[{...fixture.devices[0],id:'fictional-target-1',name:'虚构设备 1'}]}));
+ check(await send.isDisabled(),platform+' an offline selection cannot be silently included or dropped');
+ await dialog.locator('[data-action="remove-offline-targets"]').click();
+ await p.evaluate(()=>{window.failNextSend=true});
+ await send.click();
+ check(await send.isDisabled(),platform+' sending locks the confirmation controls');
+ await send.evaluate(button=>button.dispatchEvent(new MouseEvent('click',{bubbles:true})));
+ await send.waitFor({state:'visible'});
+ await p.waitForFunction(()=>!document.querySelector('[data-action="send-selection"]').disabled);
+ check(await dialog.locator('.selection-file').count()===33,platform+' failure preserves selection and disclosed files for retry');
+ check(await p.evaluate(()=>commands.filter(c=>c.type==='send').length)===1,platform+' a duplicate submission is suppressed');
+ await send.click();
+ await route(p,'progress');
+ check(await dialog.isHidden(),platform+' successful submission opens progress');
+ await p.evaluate(()=>{commands.length=0;window.lantern.setState(fixture)});
+ await p.locator('nav button[data-page="transfer"]:visible').click();
+ await route(p,'transfer');
+}
 async function checkTouch(p,label){
  const result=await p.evaluate(()=>{
   const nodes=[...document.querySelectorAll('button,button *,a,a *,input,select,textarea,summary,summary *,[role="button"],[role="button"] *,[role="switch"],[role="menuitem"],[role="menuitem"] *,[data-device],[data-device] *')];
@@ -44,9 +84,10 @@ async function checkTouch(p,label){
 (async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});try{
  for(const platform of ['Android','Windows']){
   const p=await browser.newPage({viewport:platform==='Android'?{width:390,height:844}:{width:1260,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
-  await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);if(m.id)setTimeout(()=>window.lanternNativeResult(m.id,{ok:true}),m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}});
+  await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);const sending=m.command.type==='send';const ok=!sending||!window.failNextSend;if(sending)window.failNextSend=false;if(m.id)setTimeout(()=>window.lanternNativeResult(m.id,{ok}),sending?300:m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}});
   await p.goto('http://127.0.0.1:'+server.address().port);await p.evaluate(s=>{window.fixture=s;window.lantern.setState(s);window.lantern.setInsets({top:s.self.platform==='Android'?24:0,bottom:s.self.platform==='Android'?24:0})},fixture(platform));
   await checkNavigation(p,platform);
+  await checkSendConfirmation(p,platform);
   check(await p.locator('.release-send-card').count()===1,platform+' compact sending workspace');check(await p.locator('.orbit-art').count()===0,platform+' oversized decorative orbit removed');
   check(await p.locator('.first-connection').count()===0,platform+' paired users do not see first-use guide');check(await p.locator('.release-device-card .fingerprint').count()===0,platform+' device identifiers are no longer always visible');
   check(!(await p.locator('.release-device-card').first().innerText()).includes('192.0.2.10'),platform+' address moved to details');
