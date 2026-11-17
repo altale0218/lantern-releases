@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: v0.7.29
+          ref: v0.7.30
           persist-credentials: false
       - uses: actions/setup-dotnet@v6
         with:
@@ -96,9 +96,8 @@ jobs:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-            <key>application-identifier</key><string>LANTERNQA1.com.lantern.transfer</string>
-            <key>com.apple.developer.team-identifier</key><string>LANTERNQA1</string>
-            <key>keychain-access-groups</key><array><string>LANTERNQA1.com.lantern.transfer</string></array>
+            <key>application-identifier</key><string>com.lantern.transfer</string>
+            <key>keychain-access-groups</key><array><string>com.lantern.transfer</string></array>
           </dict>
           </plist>
           PLIST
@@ -106,7 +105,7 @@ jobs:
           dotnet new globaljson --sdk-version "$DOTNET_SDK" --roll-forward disable --force
           dotnet workload install ios --version "$DOTNET_SDK"
           dotnet build "$GITHUB_WORKSPACE/src/Lantern.iOS/Lantern.iOS.csproj" -c Debug -r "$SIMULATOR_RID" \
-            -p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false -p:LanternIosSdkVersion=26.2 \
+            -p:EnableCodeSigning=true -p:CodesignKey=- -p:CodesignRequireProvisioningProfile=false -p:LanternIosSdkVersion=26.2 \
             "-p:CodesignEntitlements=$RUNNER_TEMP/lantern-sim-entitlements.plist"
       - name: Check iOS bridge readiness and app lifecycle
         shell: bash
@@ -120,18 +119,14 @@ jobs:
           test -f "$app/PrivacyInfo.xcprivacy"
           id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
           test "$id" = com.lantern.transfer
-          while IFS= read -r -d '' native; do
-            codesign --force --sign - --timestamp=none "$native"
-          done < <(find "$app" -type f \( -name '*.dylib' -o -name '*.so' \) -print0)
-          while IFS= read -r -d '' framework; do
-            codesign --force --sign - --timestamp=none "$framework"
-          done < <(find "$app" -depth -type d -name '*.framework' -print0)
-          codesign --force --sign - --timestamp=none --generate-entitlement-der \
-            --entitlements "$RUNNER_TEMP/lantern-sim-entitlements.plist" "$app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")" = 0.7.30
           codesign --verify --deep --strict "$app"
           xcrun simctl bootstatus "$device"
           xcrun simctl install "$device" "$app"
-          xcrun simctl launch --terminate-running-process "$device" "$id" | tee "$RUNNER_TEMP/lantern-bridge-launch.txt"
+          if ! xcrun simctl launch --terminate-running-process "$device" "$id" | tee "$RUNNER_TEMP/lantern-bridge-launch.txt"; then
+            xcrun simctl spawn "$device" log show --last 45s --predicate 'eventMessage CONTAINS[c] "com.lantern.transfer"' | tail -n 38
+            exit 1
+          fi
           pid="$(awk 'END {print $NF}' "$RUNNER_TEMP/lantern-bridge-launch.txt")"
           [[ "$pid" =~ ^[0-9]+$ ]]
           data="$(xcrun simctl get_app_container "$device" "$id" data)"
