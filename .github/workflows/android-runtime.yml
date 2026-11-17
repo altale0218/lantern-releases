@@ -28,6 +28,12 @@ jobs:
       CHECK_BACKGROUND: ${{ matrix.check_background }}
       SERIAL: emulator-5554
       PACKAGE: com.lantern.transfer
+      PREVIOUS_VERSION: 0.7.28
+      PREVIOUS_CODE: '61'
+      PREVIOUS_SHA: c888bb5ce2a6e637c28cfc0ff9320a881101502a7a2f66ef506110cf4f4b7358
+      NEXT_VERSION: 0.7.29
+      NEXT_CODE: '62'
+      NEXT_SHA: c4d447bcb6d9265abf1086d8fb59fdbe3ff6cbe2ad9dd0c165bc3aa4341b3fb0
     steps:
       - name: Test the published Android packages
         shell: bash
@@ -117,9 +123,9 @@ jobs:
             if device logcat -b crash -d | grep -A 24 -F "Process: $PACKAGE"; then exit 1; fi
             echo "PASS Lantern $version started the native Android main activity on API $SDK"
           }
-          download 0.7.26 2470a8dcd267838122a5f6b2b51fadfcb9666fcc9ff45bd61548877230d16739
-          device install --no-streaming "$RUNNER_TEMP/lantern-0.7.26.apk"
-          startup 59 0.7.26
+          download "$PREVIOUS_VERSION" "$PREVIOUS_SHA"
+          device install --no-streaming "$RUNNER_TEMP/lantern-$PREVIOUS_VERSION.apk"
+          startup "$PREVIOUS_CODE" "$PREVIOUS_VERSION"
           if [ "$CHECK_BACKGROUND" = true ]; then
             device shell am force-stop "$PACKAGE"
             device shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS
@@ -133,7 +139,8 @@ jobs:
           from xml.etree import ElementTree as ET
 
           serial = os.environ["SERIAL"]
-          expected = "0.7.28"
+          expected = os.environ["NEXT_VERSION"]
+          expected_code = "versionCode=" + os.environ["NEXT_CODE"] + " "
           package = os.environ["PACKAGE"]
           def adb(*args):
               return subprocess.run(["adb", "-s", serial, *args], text=True,
@@ -194,8 +201,8 @@ jobs:
               "Android system package install confirmation is not visible", 90, tap=True)
           deadline = time.monotonic() + 90
           while time.monotonic() < deadline:
-              if "versionCode=61 " in adb("shell", "dumpsys", "package", package):
-                  print("PASS Android system installed the user-confirmed server OTA; new versionCode is 61")
+              if expected_code in adb("shell", "dumpsys", "package", package):
+                  print("PASS Android system installed the user-confirmed server OTA:", expected_code)
                   break
               time.sleep(2)
           else:
@@ -203,14 +210,22 @@ jobs:
           wait_for(lambda n: n.get("package", "").endswith("packageinstaller") and
               any(s.lower() == "done" for s in labels(n)),
               "The Android installation success dialog did not offer Done", 60, tap=True)
-          print("PASS Android system installer reported success and dismissed its confirmation screen")
+          deadline = time.monotonic() + 30
+          while time.monotonic() < deadline:
+              activities = adb("shell", "dumpsys", "activity", "activities")
+              if not any("packageinstaller" in line and "ResumedActivity" in line for line in activities.splitlines()):
+                  print("PASS Android system installer reported success and dismissed its confirmation screen")
+                  break
+              time.sleep(2)
+          else:
+              raise RuntimeError("The system installer remained in front after Done")
           PY
-            startup 61 0.7.28
+            startup "$NEXT_CODE" "$NEXT_VERSION"
           fi
           if [ "$CHECK_BACKGROUND" != true ]; then
-            download 0.7.28 c888bb5ce2a6e637c28cfc0ff9320a881101502a7a2f66ef506110cf4f4b7358
-            device install --no-streaming -r "$RUNNER_TEMP/lantern-0.7.28.apk"
-            startup 61 0.7.28
+            download "$NEXT_VERSION" "$NEXT_SHA"
+            device install --no-streaming -r "$RUNNER_TEMP/lantern-$NEXT_VERSION.apk"
+            startup "$NEXT_CODE" "$NEXT_VERSION"
           fi
           echo "PASS same-signature upgrade preserved the application package"
           if [ "$CHECK_BACKGROUND" != true ]; then exit 0; fi
