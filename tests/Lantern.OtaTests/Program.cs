@@ -35,6 +35,21 @@ Assert(Ok(await Cmd(phone,check)),"Stable channel reports only stable releases")
 await WaitPhase(phone,"current");
 Assert(!feed.Requests.Any(r=>r.Contains("/download/")),"Current channel never downloads an installer");
 Assert(Ok(await Cmd(phone,new{type="ota-options",channel="beta",source="auto"})),"Choose beta and automatic source");
+string settingsPath=Path.Combine(android.DataDirectory,"settings.json");
+string savedOptions=await File.ReadAllTextAsync(settingsPath);
+string blockedWrite=settingsPath+".tmp";
+Directory.CreateDirectory(blockedWrite);
+try
+{
+    var failedSave=await Cmd(phone,new{type="ota-options",channel="stable",source="github"});
+    Assert(!Ok(failedSave),"A blocked settings write must return a failure");
+    var options=Element(await phone.GetStateAsync()).GetProperty("settings");
+    Assert(options.GetProperty("updateChannel").GetString()=="beta"&&
+        options.GetProperty("updateSource").GetString()=="auto",
+        "A failed OTA preference write leaves the active channel and source unchanged");
+    Assert(await File.ReadAllTextAsync(settingsPath)==savedOptions,"A failed save leaves the previous preferences on disk");
+}
+finally{Directory.Delete(blockedWrite);}
 feed.FailGitHub=true;
 Assert(Ok(await Cmd(phone,check)),"Gitee works even when GitHub is rate-limited");
 var available=await Update(phone);
@@ -183,7 +198,7 @@ Assert(reducer.Update(Snapshot(active with{State="failed"}),true,3).State==Taskb
 Assert(reducer.Update(Snapshot(active with{State="failed"}),true,5004).State==TaskbarState.None,"Error clears after timeout");
 Assert(reducer.Update(Snapshot(active),false,5005).State==TaskbarState.None,"Opt out clears");
 Assert(reducer.Update(Snapshot(active with{State="completed"}),true,5006).State==TaskbarState.None,"Completion clears");
-Console.WriteLine("PASS server OTA: channels, bounded catalog paging, newest-first Gitee, static catalog during API limits, automatic fallback, manual provider, HTTPS origin, checksum conflict, bad bytes, signature rejection, Android rollback and permission, restart/cache, and manual Windows ZIP installation.");
+Console.WriteLine("PASS server OTA: channels, failed preference writes, bounded catalog paging, newest-first Gitee, static catalog during API limits, automatic fallback, manual provider, HTTPS origin, checksum conflict, bad bytes, signature rejection, Android rollback and permission, restart/cache, and manual Windows ZIP installation.");
 
 sealed class Host(string platform,string directory):IPlatformHost
 {

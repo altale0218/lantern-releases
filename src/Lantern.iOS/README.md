@@ -27,7 +27,28 @@ dotnet build src/Lantern.iOS/Lantern.iOS.csproj -c Debug -r iossimulator-arm64 -
 
 在模拟器安装并打开应用，确认系统窗口显示传输界面，随后切到设置并返回。iPad 还要打开和收起侧栏，确认原生导航与界面同步。启动失败时查看 Xcode 或 Console 的进程日志；若在窗口显示前退出，可先检查场景清单和 `SceneDelegate.Window`。
 
-如果启动日志出现钥匙串权限错误（`errSecMissingEntitlement`），请检查本次签名的应用标识及对应权限。仅进行无签名构建可检查源码能否编译；验证首启和密钥存储时使用带有匹配应用标识的模拟器签名。真机继续使用 Apple 开发签名和描述文件。参见 [Apple 钥匙串访问文档](https://developer.apple.com/documentation/security/sharing-access-to-keychain-items-among-a-collection-of-apps)。
+验证模拟器首启和密钥存储时，让 .NET iOS SDK 负责签名并嵌入权限。以下命令使用默认应用标识。若自行设置了 `ApplicationId`，两处标识都要对应调整。
+
+```sh
+entitlements="$(mktemp -d)/Lantern.Simulator.plist"
+cat > "$entitlements" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>application-identifier</key>
+  <string>com.lantern.transfer</string>
+  <key>keychain-access-groups</key>
+  <array><string>com.lantern.transfer</string></array>
+</dict>
+</plist>
+PLIST
+dotnet build src/Lantern.iOS/Lantern.iOS.csproj -c Debug -r iossimulator-arm64 \
+  -p:EnableCodeSigning=true -p:CodesignKey=- -p:CodesignRequireProvisioningProfile=false \
+  "-p:CodesignEntitlements=$entitlements"
+```
+
+出现 `errSecMissingEntitlement` 时，检查生成的 App 是否包含与其标识匹配的钥匙串权限。真机继续使用 Apple 开发签名和描述文件。[Apple 钥匙串访问文档](https://developer.apple.com/documentation/security/sharing-access-to-keychain-items-among-a-collection-of-apps)
 
 ## 真机验证
 

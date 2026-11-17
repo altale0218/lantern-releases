@@ -96,6 +96,14 @@ public sealed class AppSettings
     public bool WindowsTaskbarProgress { get; set; } = true;
     public int ChunkBytes { get; set; } = 1048576;
     public int LimitMiB { get; set; }
+
+    internal AppSettings WithUpdateOptions(string channel, string source)
+    {
+        var snapshot = (AppSettings)MemberwiseClone();
+        snapshot.UpdateChannel = channel;
+        snapshot.UpdateSource = source;
+        return snapshot;
+    }
 }
 public sealed partial class AppController(IPlatformHost host,ServerUpdateClient? updateClient=null) : IAsyncDisposable
 {
@@ -481,10 +489,23 @@ public sealed partial class AppController(IPlatformHost host,ServerUpdateClient?
         { return new { ok = false, message = ex is OperationCanceledException ? "操作已取消或超时" : "操作失败：" + ex.Message }; }
     }
     private readonly SemaphoreSlim settingsGate=new(1);
-    private async Task SaveSettingsAsync()
+    private async Task SaveSettingsAsync((string Channel, string Source)? updateOptions = null)
     {
         await settingsGate.WaitAsync();
-        try { string file=Path.Combine(host.DataDirectory,"settings.json");await File.WriteAllTextAsync(file+".tmp",JsonSerializer.Serialize(settings,Json));File.Move(file+".tmp",file,true); }
+        try
+        {
+            var snapshot = updateOptions is { } update
+                ? settings.WithUpdateOptions(update.Channel, update.Source)
+                : settings;
+            string file = Path.Combine(host.DataDirectory, "settings.json");
+            await File.WriteAllTextAsync(file + ".tmp", JsonSerializer.Serialize(snapshot, Json));
+            File.Move(file + ".tmp", file, true);
+            if (updateOptions.HasValue)
+            {
+                settings.UpdateChannel = snapshot.UpdateChannel;
+                settings.UpdateSource = snapshot.UpdateSource;
+            }
+        }
         finally { settingsGate.Release(); }
     }
     private void ApplySetting(string key, JsonElement value)

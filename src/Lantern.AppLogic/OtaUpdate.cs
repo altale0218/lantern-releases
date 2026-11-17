@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.31";
-    public const int AndroidCode=64;
+    public const string Version="0.7.32";
+    public const int AndroidCode=65;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.31\n• 宽屏聊天集中显示消息与编辑区，Windows 的时间标签增大。窄窗口仍按可用空间排版。\n• 测速页面单独提供可访问的进度读数，读屏只在测速阶段变化时播报状态。\n• 更新渠道和来源保存完成后再启用检查或下载。切换渠道会清除上一渠道的下载入口，保存失败时恢复之前的选项。";
+    public const string Notes="0.7.32\n• 修复更新渠道和下载来源保存失败后的同步问题。保存未成功时，后台与界面均继续使用原先的渠道和来源。\n• 补齐 iPhone 和 iPad 模拟器的签名、首启及钥匙串检查步骤。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);
@@ -110,9 +110,7 @@ public sealed partial class AppController
         try
         {
             if(ota.Phase=="ready")throw new IOException("请先安装或删除已校验的安装包");
-            settings.UpdateChannel=channel;
-            settings.UpdateSource=source;
-            await SaveSettingsAsync();
+            await SaveSettingsAsync((channel,source));
             ota=new();
             return new{ok=true};
         }
