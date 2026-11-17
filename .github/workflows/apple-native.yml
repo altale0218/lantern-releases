@@ -26,6 +26,10 @@ jobs:
             rid: iossimulator-arm64
             model: iPhone
             type: com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro
+          - runner: macos-15
+            rid: iossimulator-arm64
+            model: iPad
+            type: com.apple.CoreSimulator.SimDeviceType.iPad-Air-13-inch-M3
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 33
     env:
@@ -95,11 +99,11 @@ jobs:
           data="$(xcrun simctl get_app_container "$device" "$id" data)"
           for attempt in {1..15}; do
             kill -0 "$pid"
-            if [[ -d "$data/Library/Application Support/Lantern" ]]; then break; fi
+            if [[ -f "$data/Library/Application Support/Lantern/settings.json" ]]; then break; fi
             sleep 2
           done
-          test -d "$data/Library/Application Support/Lantern"
-          echo "PASS $DEVICE_MODEL native data initialized for Lantern $version"
+          test -f "$data/Library/Application Support/Lantern/settings.json"
+          echo "PASS $DEVICE_MODEL native identity and preferences initialized for Lantern $version"
           cat > "$RUNNER_TEMP/ReadLanternScreen.swift" <<'SWIFT'
           import Foundation
           import Vision
@@ -112,11 +116,15 @@ jobs:
           request.recognitionLanguages = ["zh-Hans", "en-US"].filter { supported.contains($0) }
           let handler = VNImageRequestHandler(url: screenshot, options: [:])
           try handler.perform([request])
-          let text = request.results?.compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ") ?? ""
+          let strings = request.results?.compactMap { $0.topCandidates(1).first?.string } ?? []
+          let text = strings.joined(separator: " ")
           let content = text.lowercased().filter { $0.isLetter || $0.isNumber }
-          let knownUI = text.contains("更新") || text.contains("传输") || text.contains("设置") || text.contains("开始")
-          if !content.contains("lantern") || (!content.contains(version) && !knownUI) {
-              print("Rendered Lantern interface was not recognized")
+          let webLabels = ["选择文件", "发送文件", "发现身边", "附近的设备", "配对新设备", "跳过引导", "开始使用", "文件轻松互传"]
+          let matched = webLabels.filter { content.contains($0) }
+          let windowText = ["启动失败", "传输", "进度", "聊天", "设置", "重新打开"].filter { content.contains($0) }
+          print("Text observations: \(strings.count), known web labels: \(matched), window labels: \(windowText)")
+          if matched.isEmpty && !(content.contains("lantern") && content.contains(version)) {
+              print("Expected Lantern web content was not recognized")
               exit(1)
           }
           SWIFT
