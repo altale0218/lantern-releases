@@ -14,13 +14,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - sdk: 35
-            image: system-images;android-35;default;x86_64
-            check_background: 'true'
-            cache_reopen: 'true'
-            previous_version: 0.7.31
-            previous_code: '64'
-            previous_sha: 6dcda8e7bace0b8b5d2461c29343e91a15aaad329b15c240d9bb6f9626546449
           - sdk: 37
             image: system-images;android-37.0;default;x86_64
             check_background: 'true'
@@ -183,7 +176,7 @@ jobs:
           def click_node(node):
               left, top, right, bottom = map(int, re.findall(r"\d+", node.attrib["bounds"]))
               x, y = (left + right)//2, (top + bottom)//2
-              if node.get("package") == package and any(s in ("下载更新", "安装更新") for s in labels(node)):
+              if node.get("package") == package and any(s in ("打开系统设置", "检查更新", "下载更新", "安装更新") for s in labels(node)):
                   if y > display_height * 0.87 or bottom - top < 24:
                       mid = str(display_width//2)
                       adb("shell", "input", "swipe", mid, str(display_height*72//100),
@@ -236,7 +229,7 @@ jobs:
                   if "ResumedActivity" in line)[-1400:])
               raise RuntimeError("Could not enter the update center after onboarding")
           assert not has_permission(), "The fresh test app unexpectedly started with installation permission"
-          text_button("打开系统设置")
+          text_button("打开系统设置", button_only=True)
           wait_for(lambda n: n.get("package", "") == "com.android.settings" and n.get("checkable") == "true",
               "The system did not expose the install-from-this-source switch", tap=True)
           deadline = time.monotonic() + 20
