@@ -14,9 +14,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - sdk: 35
+            image: system-images;android-35;default;x86_64
+            check_background: 'true'
+            cache_reopen: 'true'
+            previous_version: 0.7.31
+            previous_code: '64'
+            previous_sha: 6dcda8e7bace0b8b5d2461c29343e91a15aaad329b15c240d9bb6f9626546449
           - sdk: 37
             image: system-images;android-37.0;default;x86_64
             check_background: 'true'
+            cache_reopen: 'false'
             previous_version: 0.7.31
             previous_code: '64'
             previous_sha: 6dcda8e7bace0b8b5d2461c29343e91a15aaad329b15c240d9bb6f9626546449
@@ -26,6 +34,7 @@ jobs:
       IMAGE: ${{ matrix.image }}
       SDK: ${{ matrix.sdk }}
       CHECK_BACKGROUND: ${{ matrix.check_background }}
+      CACHE_REOPEN: ${{ matrix.cache_reopen }}
       SERIAL: emulator-5554
       PACKAGE: com.lantern.transfer
       PREVIOUS_VERSION: ${{ matrix.previous_version }}
@@ -140,9 +149,13 @@ jobs:
           install_apk "$RUNNER_TEMP/lantern-$PREVIOUS_VERSION.apk"
           startup "$PREVIOUS_CODE" "$PREVIOUS_VERSION"
           if [ "$CHECK_BACKGROUND" = true ]; then
-            device shell am force-stop "$PACKAGE"
-            device shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS
-            device shell am start -W -n "$PACKAGE/.StartupActivity"
+            if [ "$SDK" = 37 ]; then
+              device shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS
+            else
+              device shell am force-stop "$PACKAGE"
+              device shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS
+              device shell am start -W -n "$PACKAGE/.StartupActivity"
+            fi
             python3 - <<'PY'
           import os
           import re
@@ -244,6 +257,16 @@ jobs:
           text_button("下载更新", 95, button_only=True)
           wait_for(lambda n: "安装更新" in labels(n), "Verified download was not offered for install", 150)
           print("PASS Android app selected beta, found the server release, downloaded and verified the APK")
+          if os.environ.get("CACHE_REOPEN") == "true":
+              adb("shell", "am", "force-stop", package)
+              adb("shell", "am", "start", "-W", "-n", package + "/.StartupActivity")
+              wait_for(lambda n: n.get("clickable") == "true" and
+                  any(s in ("查看并安装", "更新中心") for s in labels(n)),
+                  "The reopened app did not show the verified-package prompt or update entry", 90, tap=True)
+              wait_for(lambda n: "安装更新" in labels(n),
+                  "The verified package was not restored after a full process restart", 100)
+              assert has_permission(), "The previously granted install permission disappeared"
+              print("PASS Android restored the verified download and install permission after process restart")
           text_button("安装更新")
           wait_for(lambda n: n.get("package", "").endswith("packageinstaller") and
               any(s.lower() in ("update", "install") for s in labels(n)),
