@@ -14,8 +14,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - sdk: 37
-            image: system-images;android-37.0;default;x86_64
+          - sdk: 35
+            image: system-images;android-35;default;x86_64
             check_background: 'true'
             previous_version: 0.7.31
             previous_code: '64'
@@ -239,6 +239,14 @@ jobs:
           text_button("下载更新", 95, button_only=True)
           wait_for(lambda n: "安装更新" in labels(n), "Verified download was not offered for install", 150)
           print("PASS Android app selected beta, found the server release, downloaded and verified the APK")
+          adb("shell", "am", "force-stop", package)
+          adb("shell", "am", "start", "-W", "-n", package + "/.StartupActivity")
+          wait_for(lambda n: "更新中心" in labels(n) and n.get("clickable") == "true",
+              "The reopened app did not show its update entry", 90, tap=True)
+          wait_for(lambda n: "安装更新" in labels(n),
+              "The verified package was not restored after a full process restart", 100)
+          assert has_permission(), "The previously granted install permission disappeared"
+          print("PASS Android restored the verified download and install permission after process restart")
           text_button("安装更新")
           wait_for(lambda n: n.get("package", "").endswith("packageinstaller") and
               any(s.lower() in ("update", "install") for s in labels(n)),
