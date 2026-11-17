@@ -24,6 +24,11 @@ async function setup(p,platform,theme='light',fontScale=100){
   await p.waitForFunction(()=>commands.some(c=>c.type==='speed-test-start'));check(await p.evaluate(()=>commands.filter(c=>c.type==='speed-test-start').length)===1,platform+' automatically starts exactly one native test');
   check((await p.locator('.speed-value').first().innerText()).replace(/\s/g,'')==='—MiB/s',platform+' no fabricated speed before native data');
   await p.evaluate(()=>{fixture.speedTest={id:'c'.repeat(32),peerId:fixture.devices[0].id,peerName:fixture.devices[0].name,phase:'upload',message:'示例测速中',progress:.25,currentSpeed:32*1048576,currentBytes:8*1048576,currentSeconds:.25};window.lantern.setState(fixture)});
+  const meter=p.getByRole('progressbar',{name:'测速进度'});
+  check(await meter.getAttribute('aria-valuenow')==='25',platform+' speed progress exposes its numeric value');
+  const announcement=p.locator('.speed-status').getByRole('status');
+  check(await announcement.innerText()==='测试本机发送'&&await meter.evaluate(el=>!el.closest('[role="status"]')),
+   platform+' live status contains only the phase and leaves the meter separately accessible');
   check((await p.locator('.speed-direction').first().innerText()).includes('32.0'),platform+' displays real bridge upload reading');check((await p.locator('.speed-direction').nth(1).innerText()).includes('等待有效测量'),platform+' second direction waits independently');
   await p.evaluate(()=>{fixture.speedTest={...fixture.speedTest,phase:'download',progress:.7,currentSpeed:48*1048576,upload:{bytes:64*1048576,seconds:2,bytesPerSecond:32*1048576,verified:true}};window.lantern.setState(fixture)});
   check((await p.locator('.speed-direction').first().innerText()).includes('已校验')&&(await p.locator('.speed-direction').nth(1).innerText()).includes('48.0'),platform+' completed and active directions remain distinct');

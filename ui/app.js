@@ -140,7 +140,7 @@ function renderFrame(){if(fileMenu&&state.self.platform!=='Windows')closeFileMen
  const peerAvatar=page==='chat'&&current?.device?'<span class="conversation-avatar '+(current.device.online?'is-online':'')+'" aria-hidden="true">'+icon(deviceIcon(current.device.platform))+'</span>':'';
  const secondaryActions=page==='chat'?'<div class="chat-header-actions"><button class="icon-btn" data-action="chat-search" aria-label="查找聊天记录" title="查找聊天记录"'+(current?.items.length?'':' disabled')+'>'+icon('search')+'</button>'+
   '<button class="icon-btn" data-action="chat-record-menu" aria-label="聊天记录管理" aria-pressed="'+recordMode+'" title="'+(recordMode?'退出记录多选':'管理聊天记录')+'">'+icon('log')+'</button>'+updateButton+'</div>':updateButton;
- const header=secondary?'<button class="icon-btn secondary-back" data-action="secondary-back" aria-label="返回">'+icon('arrow')+'</button>'+peerAvatar+'<div class="grow secondary-title"><h1 tabindex="-1">'+esc(title)+'</h1><small>'+esc(page==='chat'?(current?.device?.online?'在线 · 端到端加密':'设备离线 · 可以查看历史记录'):page==='speed-test'?'局域网 · 双向测速':'Lantern '+(state.version||'0.7.30'))+'</small></div>'+secondaryActions:'<h1 class="android-title" tabindex="-1">'+title+'</h1><div class="breadcrumb">闪传 Lantern <span>/ &nbsp; '+title+'</span></div><div class="topbar-actions">'+networkBadge()+(applePlatform(state.self.platform)&&page==='transfer'?'<button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button>':'')+updateButton+'</div>';
+ const header=secondary?'<button class="icon-btn secondary-back" data-action="secondary-back" aria-label="返回">'+icon('arrow')+'</button>'+peerAvatar+'<div class="grow secondary-title"><h1 tabindex="-1">'+esc(title)+'</h1><small>'+esc(page==='chat'?(current?.device?.online?'在线 · 端到端加密':'设备离线 · 可以查看历史记录'):page==='speed-test'?'局域网 · 双向测速':'Lantern '+(state.version||'0.7.31'))+'</small></div>'+secondaryActions:'<h1 class="android-title" tabindex="-1">'+title+'</h1><div class="breadcrumb">闪传 Lantern <span>/ &nbsp; '+title+'</span></div><div class="topbar-actions">'+networkBadge()+(applePlatform(state.self.platform)&&page==='transfer'?'<button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button>':'')+updateButton+'</div>';
  const activeTransfers=secondary?0:state.tasks.reduce((count,task)=>count+(isActiveFileTask(task)?1:0),0);
  const sidebar=secondary?'':'<aside class="sidebar"><div class="brand"><div class="brand-icon">'+icon('bolt')+'</div><span>闪传<small>LANTERN</small></span></div><div class="nav-label">设备与传输</div><nav aria-label="主导航">'+navigationButtons(activeTransfers,false)+'</nav><div class="sidebar-foot">'+(state.settings.showSidebarSecurityHint?'<div class="secure-note">'+icon('shield','shield')+'<h3>只在你的设备之间</h3><p>密码认证配对 · 端到端加密<br>无需服务器，文件留在局域网。</p><button class="link" data-page="settings">查看安全设置 '+icon('arrow')+'</button></div>':'')+'<div class="self-device"><div class="self-avatar">'+icon(deviceIcon(state.self.platform))+'</div><div class="grow"><b>'+esc(state.self.name)+'</b><small>本机 · '+esc(state.self.platform)+'</small></div><button class="icon-btn" data-action="self" aria-label="本机连接信息">'+icon('info')+'</button></div></div></aside>';
  const content=page==='transfer'?transferPage():page==='progress'?progressPage():page==='history'?historyPage():page==='chat'?chatPage(current):page==='updates'?updatesPage():page==='speed-test'?speedTestPage():settingsPage();
@@ -492,7 +492,7 @@ function speedTestPage(){
   return '<section class="speed-direction '+(active?'is-active':'')+'" data-render-key="speed-'+direction+'"><div class="speed-direction-title">'+icon(direction==='upload'?'upload':'download')+'<h2>'+label+'</h2><span class="speed-result-state">'+(result?'已校验':active?'测试中':'等待')+'</span></div><p>'+description+'</p><div class="speed-value">'+(rate?(rate/1048576).toFixed(1):'—')+'<small>MiB/s</small></div><div class="speed-mbps">'+(rate?(rate*8/1000000).toFixed(1)+' Mbps':'等待有效测量')+'</div><div class="speed-sample">'+(result?(positive(result.bytes)/1048576).toFixed(1)+' MiB · '+positive(result.seconds).toFixed(2)+' 秒':active?bytes(s.currentBytes||0)+' · '+positive(s.currentSeconds).toFixed(1)+' 秒':'完成后显示已校验的平均速度')+'</div></section>';
  }
  const progress=Math.max(0,Math.min(100,(Number(s.progress)||0)*100));
- return '<section class="speed-page"><div class="speed-page-intro"><h2>设备连接速度</h2><p>分别测量两个方向，结果包含连接加密与校验开销，不包含磁盘读写。</p></div><section class="speed-endpoints"><div>'+icon(deviceIcon(state.self.platform))+'<span><small>A · 本机</small><b>'+esc(state.self.name)+'</b></span></div><span class="speed-link">'+icon('transfer')+'</span><div>'+icon(deviceIcon(peer?.platform))+'<span><small>B · 已配对设备</small><b>'+esc(peer?.name||s.peerName||'设备已移除')+'</b></span></div></section><div class="speed-directions">'+directionCard('upload','A → B','本机发送到对方')+directionCard('download','B → A','对方发送到本机')+'</div><section class="speed-status" role="status" aria-live="polite"><div class="speed-status-title"><b>'+phase+'</b><span>'+Math.round(progress)+'%</span></div><div class="progress-track"><div class="progress-fill" style="--progress:'+progressRatio(progress)+'"></div></div><p>'+esc(speedError||(!ready?'对方离线或信任已移除，请重新连接。':other?'另一台设备正在测速，请完成或停止后再试。':s.message||'正在准备测试'))+'</p></section><div class="speed-actions">'+(busy?'<button class="btn secondary" data-action="speed-stop" '+(!s.id?'disabled':'')+'>'+icon('close')+'停止测速</button>':'<button class="btn primary" data-action="speed-retry" '+(!ready||other||state.mode==='preview'?'disabled':'')+'>'+icon('refresh')+'重新测试</button>')+'<button class="btn secondary" data-action="secondary-back">返回设备</button></div><aside class="speed-explanation"><p>'+icon('shield')+'<span>设备密钥认证 · AES-GCM 加密 · SHA-256 完整性校验</span></p><p>使用临时随机数据，不读取或保存你的文件。通常每个方向约 3 秒，单向最多 256 MiB；测速期间会占用局域网带宽，不受文件发送限速设置影响。</p><p>需要双端 0.7.0 或以上。两个方向独立计时，无需同步设备时钟。建议暂停其他传输；Wi-Fi、设备负载与加密性能都会影响结果。离开此页面会停止正在进行的测速，结果仅在本次运行期间保留。</p></aside></section>';
+ return '<section class="speed-page"><div class="speed-page-intro"><h2>设备连接速度</h2><p>分别测量两个方向，结果包含连接加密与校验开销，不包含磁盘读写。</p></div><section class="speed-endpoints"><div>'+icon(deviceIcon(state.self.platform))+'<span><small>A · 本机</small><b>'+esc(state.self.name)+'</b></span></div><span class="speed-link">'+icon('transfer')+'</span><div>'+icon(deviceIcon(peer?.platform))+'<span><small>B · 已配对设备</small><b>'+esc(peer?.name||s.peerName||'设备已移除')+'</b></span></div></section><div class="speed-directions">'+directionCard('upload','A → B','本机发送到对方')+directionCard('download','B → A','对方发送到本机')+'</div><section class="speed-status" aria-label="测速状态"><div class="speed-status-title"><b role="status">'+phase+'</b><span aria-hidden="true">'+Math.round(progress)+'%</span></div><div class="progress-track" role="progressbar" aria-label="测速进度" aria-valuenow="'+Math.round(progress)+'"><div class="progress-fill" style="--progress:'+progressRatio(progress)+'"></div></div><p>'+esc(speedError||(!ready?'对方离线或信任已移除，请重新连接。':other?'另一台设备正在测速，请完成或停止后再试。':s.message||'正在准备测试'))+'</p></section><div class="speed-actions">'+(busy?'<button class="btn secondary" data-action="speed-stop" '+(!s.id?'disabled':'')+'>'+icon('close')+'停止测速</button>':'<button class="btn primary" data-action="speed-retry" '+(!ready||other||state.mode==='preview'?'disabled':'')+'>'+icon('refresh')+'重新测试</button>')+'<button class="btn secondary" data-action="secondary-back">返回设备</button></div><aside class="speed-explanation"><p>'+icon('shield')+'<span>设备密钥认证 · AES-GCM 加密 · SHA-256 完整性校验</span></p><p>使用临时随机数据，不读取或保存你的文件。通常每个方向约 3 秒，单向最多 256 MiB；测速期间会占用局域网带宽，不受文件发送限速设置影响。</p><p>需要双端 0.7.0 或以上。两个方向独立计时，无需同步设备时钟。建议暂停其他传输；Wi-Fi、设备负载与加密性能都会影响结果。离开此页面会停止正在进行的测速，结果仅在本次运行期间保留。</p></aside></section>';
 }
 
 
@@ -549,10 +549,11 @@ function sizingSettings(){return [['uiScale','界面缩放','调整整体控件�
 function updatesPage(){
  return '<div class="update-layout">'+updateSettings()+
   '<section class="settings-group current-release"><h2>'+icon('log')+'当前版本更新日志</h2><b class="update-version">Lantern '+
-  esc(state.version||'0.7.30')+'</b><pre class="release-notes">'+esc(state.releaseNotes?.notes||'')+'</pre></section></div>';
+  esc(state.version||'0.7.31')+'</b><pre class="release-notes">'+esc(state.releaseNotes?.notes||'')+'</pre></section></div>';
 }
 const updateServers={auto:'自动选择',github:'GitHub',gitee:'Gitee'};
 const updateChannels={stable:'稳定版',beta:'测试版'};
+let pendingUpdateOptions=null;
 const updateStatuses={available:'发现新版',current:'已是最新',empty:'暂无发行版',limited:'近期未找到新版',unavailable:'暂不可用',timeout:'请求超时',invalid:'校验信息无效',conflict:'校验信息冲突'};
 function updateReleaseLog(notes){
  if(!notes)return '';
@@ -566,7 +567,7 @@ function updateSettings(){
  if(applePlatform(state.self.platform))return '<section class="settings-group"><h2>'+icon('download')+' iPhone 与 iPad 版本</h2>'+
   '<p class="update-help">请在 App Store 或 TestFlight 查看本机适用的版本。</p></section>';
  const update=state.ota||{},phase=update.phase||'idle',android=state.self.platform==='Android';
- const busy=['checking','downloading','verifying'].includes(phase),locked=busy||phase==='ready';
+ const busy=['checking','downloading','verifying'].includes(phase),locked=busy||phase==='ready'||pendingUpdateOptions!==null;
  const release=['available','downloading','verifying','ready'].includes(phase)?update.release:null;
  const statusTitle={idle:'版本检查',current:'已是最新版本',checking:'正在检查更新',failed:'更新未完成'}[phase]||'软件更新';
  const title=release?'Lantern '+release.version:statusTitle;
@@ -574,13 +575,13 @@ function updateSettings(){
  const field=(id,label,options,value)=>'<label class="update-option" for="'+id+'"><b>'+label+'</b><select id="'+id+'"'+(locked?' disabled':'')+'>'+
   Object.entries(options).map(([key,text])=>'<option value="'+key+'"'+(key===value?' selected':'')+'>'+text+'</option>').join('')+'</select></label>';
  const primary={
-  available:'<button class="btn primary" data-action="ota-download">'+icon('download')+'下载更新</button>',
+  available:'<button class="btn primary" data-action="ota-download"'+(pendingUpdateOptions?' disabled':'')+'>'+icon('download')+'下载更新</button>',
   downloading:'<button class="btn secondary" data-action="ota-cancel">取消下载</button>',
   ready:'<button class="btn primary" data-action="ota-install">'+(android?'安装更新':'打开安装包目录')+'</button>'+
    '<button class="btn ghost" data-action="ota-clear-confirm">删除安装包</button>'
  }[phase]||'';
  const check='<button class="btn '+(primary?'secondary':'primary')+'" data-action="ota-check"'+(locked?' disabled':'')+'>'+
-  icon('refresh')+(phase==='checking'?'正在检查…':'检查更新')+'</button>';
+  icon('refresh')+(pendingUpdateOptions?'正在保存选项…':phase==='checking'?'正在检查…':'检查更新')+'</button>';
  const progress=progressRatio((update.completed||0)/(release?.size||1)*100);
  const telemetry=busy&&release?'<div class="update-telemetry"><div class="progress-track" role="progressbar" aria-label="更新下载进度" aria-valuenow="'+Math.round(progress*100)+'">'+
   '<div class="progress-fill" style="--progress:'+progress+'"></div></div><p class="update-help">'+bytes(update.completed||0)+' / '+bytes(release.size)+
@@ -594,8 +595,8 @@ function updateSettings(){
   '<div class="grow"><h2>'+esc(title)+'</h2>'+(metadata?'<p class="update-release-meta">'+esc(metadata)+'</p>':'')+'</div></div>'+
   '<div class="update-actions">'+primary+check+'</div>'+
   '<p class="update-status" role="status">'+esc(update.message||'连接互联网后即可检查更新。')+'</p>'+telemetry+updateReleaseLog(release?.notes)+
-  '<div class="update-option-grid">'+field('ota-channel','更新渠道',updateChannels,state.settings.updateChannel||'stable')+
-  field('ota-source','下载来源',updateServers,state.settings.updateSource||'auto')+'</div>'+
+  '<div class="update-option-grid">'+field('ota-channel','更新渠道',updateChannels,pendingUpdateOptions?.channel||state.settings.updateChannel||'stable')+
+  field('ota-source','下载来源',updateServers,pendingUpdateOptions?.source||state.settings.updateSource||'auto')+'</div>'+
   '<p class="update-help update-platform-help">'+guidance+'</p>'+permission+sources+'</section>';
 }
 function settingsJump(apple){
@@ -620,8 +621,8 @@ function settingsPage(){const windows=state.self.platform==='Windows',apple=appl
 <section class="settings-group" data-render-key="settings-appearance"><h2>${icon('eye')} 外观</h2><div class="setting"><div class="grow"><b>颜色主题</b><small>同步应用与系统栏配色。</small></div><select data-setting="theme" aria-label="颜色主题">${[['system','跟随系统'],['dark','深色模式'],['light','浅色模式']].map(([v,l])=>'<option value="'+v+'" '+((state.settings.theme||'system')===v?'selected':'')+'>'+l+'</option>').join('')}</select></div>${sizingSettings()}</section>
 <section class="settings-group" data-render-key="settings-files"><h2>${icon('log')} 文件与记录</h2>${settingToggle('thumbnails','图片和视频缩略图','在本机生成预览；接收文件完成校验后才生成。')}${settingToggle('history','保存聊天与传输记录','文字、记录与缩略图加密保存在本机；关闭后仅保留当前会话。')}${windows?settingToggle('allowFileDrop','拖拽文件发送','拖入窗口任意位置，再选择一个或多个发送对象。'):''}<details class="advanced-settings" data-motion-disclosure><summary>高级传输选项</summary><div class="setting"><div class="grow"><b>发送速度上限</b><small>为其他应用预留带宽。</small></div><select data-setting="limitMiB" aria-label="发送速度上限">${[[0,'不限速'],[10,'10 MB/s'],[30,'30 MB/s'],[60,'60 MB/s']].map(([v,l])=>'<option value="'+v+'" '+(Number(state.settings.limitMiB)===v?'selected':'')+'>'+l+'</option>').join('')}</select></div></details></section>
 ${apple?'':`<section class="settings-group" data-render-key="settings-notifications"><h2>${icon('bell')} 通知</h2>${windows?settingToggle('windowsNotifications','系统传输通知','显示传输开始、完成与失败；点击通知返回应用。')+settingToggle('windowsTaskbarProgress','任务栏传输进度','在任务栏图标显示任务合并进度。'):settingToggle('transferNotifications','通知栏传输状态','合并显示进度、速度与结果；传输期间请保持应用运行。')}${settingToggle('notificationDetails','在通知中显示文件名','默认关闭，保护通知区域的内容隐私。')}${windows?'':'<div class="setting"><div class="grow"><b>系统通知权限</b><small>'+(status.enabled?'已允许系统通知，可在系统设置管理。':'需要系统授权才能显示通知栏传输状态。')+'</small></div><button class="btn secondary" data-action="'+(status.enabled?'notification-settings':'notification-permission')+'">'+(status.enabled?'系统设置':'允许通知')+'</button></div>'}</section>`}
-<section class="settings-group" data-render-key="settings-updates"><h2>${icon('download')} 软件更新</h2><div class="setting"><div class="grow"><b>更新中心</b><small>${state.ota?.phase==='ready'?'安装包已就绪':state.ota?.phase==='available'?'发现可用更新':['downloading','verifying'].includes(state.ota?.phase)?'正在下载和校验更新':('当前版本 '+esc(state.version||'0.7.30'))}</small></div><button class="btn secondary" data-action="open-updates">打开更新中心</button></div></section>
-<section class="settings-group brand-about" data-render-key="settings-about"><div class="about-brand">${icon('bolt')}<div class="grow"><h2>闪传 Lantern <span class="version-pill">${esc(state.version||'0.7.30')}</span></h2></div><div class="about-actions"><button class="btn ghost" data-action="open-guide">使用引导</button><button class="btn ghost" data-action="privacy-info">隐私说明</button></div></div><div class="about-security"><p><b>设备之间直接分享</b><br>文字与文件在局域网内加密传输，无云端中转。设备昵称与发现广播不是身份凭证。</p><p><b>每次连接都验证身份</b><br>记住设备密钥；连接通过认证后才能接收。传输加密并校验完整性，移除信任后需重新配对。</p></div></section></div>${footer()}`}
+<section class="settings-group" data-render-key="settings-updates"><h2>${icon('download')} 软件更新</h2><div class="setting"><div class="grow"><b>更新中心</b><small>${state.ota?.phase==='ready'?'安装包已就绪':state.ota?.phase==='available'?'发现可用更新':['downloading','verifying'].includes(state.ota?.phase)?'正在下载和校验更新':('当前版本 '+esc(state.version||'0.7.31'))}</small></div><button class="btn secondary" data-action="open-updates">打开更新中心</button></div></section>
+<section class="settings-group brand-about" data-render-key="settings-about"><div class="about-brand">${icon('bolt')}<div class="grow"><h2>闪传 Lantern <span class="version-pill">${esc(state.version||'0.7.31')}</span></h2></div><div class="about-actions"><button class="btn ghost" data-action="open-guide">使用引导</button><button class="btn ghost" data-action="privacy-info">隐私说明</button></div></div><div class="about-security"><p><b>设备之间直接分享</b><br>文字与文件在局域网内加密传输，无云端中转。设备昵称与发现广播不是身份凭证。</p><p><b>每次连接都验证身份</b><br>记住设备密钥；连接通过认证后才能接收。传输加密并校验完整性，移除信任后需重新配对。</p></div></section></div>${footer()}`}
 let modalOrigin=null,modalRevision=0;
 function patchModalContent(html,type){
  const titlePattern=/<h2(?=\s|>)(?![^>]*\bid=)/i;
@@ -1167,7 +1168,25 @@ document.addEventListener('scroll',e=>{if(e.target.id==='chat-log')updateChatScr
 document.addEventListener('change',async e=>{
  if(e.target.id==='settings-jump'){jumpToSettingsGroup(e.target);return;}
  if(e.target instanceof HTMLSelectElement&&e.target.hasAttribute('data-document-section')){jumpToDocumentSection(e.target);return;}
- if(e.target.id==='ota-channel'||e.target.id==='ota-source'){const channel=document.getElementById('ota-channel')?.value||'stable',source=document.getElementById('ota-source')?.value||'auto';if(state.mode==='preview'){state.settings.updateChannel=channel;state.settings.updateSource=source;render()}else{await command('ota-options',{channel,source});}return}
+ if(e.target.id==='ota-channel'||e.target.id==='ota-source'){
+  if(pendingUpdateOptions)return;
+  const channel=document.getElementById('ota-channel').value,source=document.getElementById('ota-source').value;
+  if(state.mode==='preview'){state.settings.updateChannel=channel;state.settings.updateSource=source;render();return;}
+  const field=e.target.id,keyboard=inputRoot.dataset.inputModality==='keyboard';
+  pendingUpdateOptions={channel,source};
+  render();
+  try{
+   if((await command('ota-options',{channel,source}))?.ok){
+    state.settings={...state.settings,updateChannel:channel,updateSource:source};
+    state.ota={phase:'idle'};
+   }
+  }finally{
+   pendingUpdateOptions=null;
+   render();
+   if(keyboard&&page==='updates'&&document.activeElement===document.body)document.getElementById(field)?.focus({preventScroll:true});
+  }
+  return;
+ }
  if(e.target.dataset.setting){const key=e.target.dataset.setting,value=key==='theme'?e.target.value:Number(e.target.value);if(state.mode==='preview'){state.settings[key]=value;localStorage.setItem('lantern.preview.settings',JSON.stringify(state.settings));render()}else await command('setting',{key,value})}
 });
 document.getElementById('file-picker').addEventListener('change',e=>{if(e.target.files.length)localFiles(e.target.files);e.target.value=''});

@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.30";
-    public const int AndroidCode=63;
+    public const string Version="0.7.31";
+    public const int AndroidCode=64;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.30\n• 发送窗口明确显示可选设备总数。达到上限时，已选设备仍可取消，空出名额后能立即选择其他设备。\n• 修复弹窗中的反向 Tab 顺序。发送对象掉线时，键盘焦点会转到取消离线选择的按钮，保留已选文件。";
+    public const string Notes="0.7.31\n• 宽屏聊天集中显示消息与编辑区，Windows 的时间标签增大。窄窗口仍按可用空间排版。\n• 测速页面单独提供可访问的进度读数，读屏只在测速阶段变化时播报状态。\n• 更新渠道和来源保存完成后再启用检查或下载。切换渠道会清除上一渠道的下载入口，保存失败时恢复之前的选项。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);

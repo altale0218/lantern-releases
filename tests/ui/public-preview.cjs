@@ -133,7 +133,26 @@ async function checkUpdateStages(p,platform){
  check((await p.locator('[data-action="ota-install"]').innerText()).includes(platform==='Android'?'安装更新':'打开安装包目录'),platform+' verified installer uses the platform-specific action');
  await p.evaluate(()=>{fixture.ota.phase='current';window.lantern.setState(fixture)});
  check(await p.locator('.update-release-log').count()===0&&await p.locator('.current-release .release-notes').count()===1,platform+' current version displays only its own notes');
- await p.evaluate(()=>{fixture.ota={phase:'idle'};window.lantern.setState(fixture)});
+ await p.evaluate(()=>{
+  window.beforeUpdateOptions={mode:fixture.mode,settings:fixture.settings};
+  fixture.mode='native';fixture.ota.phase='available';window.lantern.setState(fixture);
+ });
+ const channel=p.locator('#ota-channel'),source=p.locator('#ota-source'),checkUpdate=p.locator('[data-action="ota-check"]');
+ await channel.selectOption('beta');
+ check(await checkUpdate.isDisabled()&&await source.isDisabled()&&await download.isDisabled(),
+  platform+' options save blocks checking or downloading from the previous channel');
+ await p.waitForFunction(()=>!document.querySelector('[data-action="ota-check"]').disabled);
+ check(await channel.inputValue()==='beta'&&await download.count()===0,
+  platform+' acknowledging a channel change discards the old release action');
+ await p.evaluate(()=>{window.failNextOtaOptions=true});
+ await source.selectOption('gitee');
+ await p.waitForFunction(()=>!document.querySelector('[data-action="ota-check"]').disabled);
+ check(await source.inputValue()==='auto',platform+' a failed source change restores the last acknowledged choice');
+ await p.evaluate(()=>{
+  Object.assign(fixture,beforeUpdateOptions);
+  delete window.beforeUpdateOptions;
+  fixture.ota={phase:'idle'};window.lantern.setState(fixture);
+ });
 }
 async function checkChatSearch(p,platform){
  await p.evaluate(()=>{
@@ -149,6 +168,18 @@ async function checkChatSearch(p,platform){
  });
  await p.locator('.chat-conversation[data-chat-key="key-a"]').click();
  await route(p,'chat');
+ if(platform==='Windows'){
+  const viewport=p.viewportSize();
+  await p.setViewportSize({width:1720,height:980});
+  check(await p.evaluate(()=>{
+   const log=document.getElementById('chat-log'),composer=document.querySelector('.chat-composer');
+   const bounds=log.getBoundingClientRect(),input=composer.querySelector('textarea').getBoundingClientRect();
+   const meta=parseFloat(getComputedStyle(log.querySelector('.chat-message-meta')).fontSize);
+   return bounds.width>1600&&input.width>=1020&&input.width<=1110&&meta>=12&&
+    Math.abs((input.left+input.right)-(bounds.left+bounds.right))<10;
+  }),platform+' a wide display centers the reading lane and preserves readable time labels');
+  await p.setViewportSize(viewport);
+ }
  const composer=p.locator('#chat-text');
  const initialHeight=await composer.evaluate(input=>input.offsetHeight);
  await composer.fill('多行草稿第一行\n第二行\n第三行\n第四行');
@@ -356,7 +387,7 @@ async function checkTouch(p,label){
 (async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});try{
  for(const platform of ['Android','Windows']){
   const p=await browser.newPage({viewport:platform==='Android'?{width:390,height:844}:{width:1260,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
-  await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);const sending=m.command.type==='send';const ok=!sending||!window.failNextSend;if(sending)window.failNextSend=false;const result={ok};if(m.command.type==='preview-selection')result.document={format:'PowerPoint',sections:Array.from({length:3},(_,i)=>({title:'幻灯片 '+(i+1),text:'虚构示例内容\n'.repeat(22)}))};if(m.command.type==='preview-thumbnails')result.thumbnails=m.command.items.map(item=>({...item,source:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII='}));if(m.id){const closingPair=m.command.type==='close-pairing';setTimeout(()=>{window.lanternNativeResult(m.id,result);if(closingPair)window.completedPairCloses=(window.completedPairCloses||0)+1;},sending?300:closingPair?160:m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}}});
+  await p.addInitScript(()=>{window.commands=[];window.LanternNative={postMessage(raw){const m=JSON.parse(raw);commands.push(m.command);const sending=m.command.type==='send',savingOptions=m.command.type==='ota-options';const ok=(!sending||!window.failNextSend)&&(!savingOptions||!window.failNextOtaOptions);if(sending)window.failNextSend=false;if(savingOptions)window.failNextOtaOptions=false;const result={ok};if(m.command.type==='preview-selection')result.document={format:'PowerPoint',sections:Array.from({length:3},(_,i)=>({title:'幻灯片 '+(i+1),text:'虚构示例内容\n'.repeat(22)}))};if(m.command.type==='preview-thumbnails')result.thumbnails=m.command.items.map(item=>({...item,source:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII='}));if(m.id){const closingPair=m.command.type==='close-pairing';setTimeout(()=>{window.lanternNativeResult(m.id,result);if(closingPair)window.completedPairCloses=(window.completedPairCloses||0)+1;},sending?300:closingPair?160:savingOptions?350:m.command.type==='setting'||m.command.type==='refresh-devices'?150:0)}}}});
   await p.goto('http://127.0.0.1:'+server.address().port);await p.evaluate(s=>{window.fixture=s;window.lantern.setState(s);window.lantern.setInsets({top:s.self.platform==='Android'?24:0,bottom:s.self.platform==='Android'?24:0})},fixture(platform));
   await checkNavigation(p,platform);
   await checkDiscoveredPairing(p,platform);

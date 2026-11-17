@@ -27,6 +27,8 @@ dotnet build src/Lantern.iOS/Lantern.iOS.csproj -c Debug -r iossimulator-arm64 -
 
 在模拟器安装并打开应用，确认系统窗口显示传输界面，随后切到设置并返回。iPad 还要打开和收起侧栏，确认原生导航与界面同步。启动失败时查看 Xcode 或 Console 的进程日志；若在窗口显示前退出，可先检查场景清单和 `SceneDelegate.Window`。
 
+如果启动日志出现钥匙串权限错误（`errSecMissingEntitlement`），请检查本次签名的应用标识及对应权限。仅进行无签名构建可检查源码能否编译；验证首启和密钥存储时使用带有匹配应用标识的模拟器签名。真机继续使用 Apple 开发签名和描述文件。参见 [Apple 钥匙串访问文档](https://developer.apple.com/documentation/security/sharing-access-to-keychain-items-among-a-collection-of-apps)。
+
 ## 真机验证
 
 先在 iPhone 和 iPad 确认启动、深浅主题、字体大小和减少动态效果，检查 iPad 侧栏、分屏及横竖屏。分别验证允许、拒绝和重新开放局域网访问，确认四类设备可双向发现，再走一次双方确认的配对流程。与 Windows、Android 双向发送图片、大文件和消息，比较文件 SHA-256，在「文件」App 查找接收文件。验证设备换网、退出再上线、手动连接、外部文件导入、视频缩略图、Quick Look、删除确认和重启后的密钥保留。

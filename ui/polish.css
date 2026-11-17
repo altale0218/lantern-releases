@@ -632,6 +632,18 @@
 :root[data-page="chat"] .secondary-topbar{flex-wrap:wrap;column-gap:10px;row-gap:4px}
 :root[data-page="chat"] .secondary-title{flex:1 1 min(8em,60%);min-width:0}
 .chat-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-inline-start:auto;min-width:0;flex-wrap:wrap}
+:root[data-platform="Windows"] .chat-message-meta{font-size:calc(12px * var(--font-scale,1))}
+@media(min-width:1280px){
+ :root:is([data-platform="Windows"],[data-platform="iPadOS"]) .chat-thread{
+  --chat-reading-gutter:max(24px,calc((100% - 1100px) / 2));
+ }
+ :root:is([data-platform="Windows"],[data-platform="iPadOS"]) :is(.chat-log,.chat-composer){
+  padding-inline:var(--chat-reading-gutter);
+ }
+ :root:is([data-platform="Windows"],[data-platform="iPadOS"]) .chat-jump{
+  inset-inline-end:var(--chat-reading-gutter);
+ }
+}
 @supports (field-sizing:content){
  .chat-composer #chat-text{
   field-sizing:content;
