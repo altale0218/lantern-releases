@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: v0.7.30
+          ref: v0.7.31
           persist-credentials: false
       - uses: actions/setup-dotnet@v6
         with:
@@ -89,6 +89,14 @@ jobs:
 
           """ + marker)
           path.write_text(text)
+          store = Path("src/Lantern.iOS/KeychainStore.cs")
+          source = store.read_text()
+          keychain_marker = "        return Task.FromResult<string?>(NSString.FromData"
+          assert source.count(keychain_marker) == 1
+          source = source.replace(keychain_marker, """        if (key == "lantern.identity")
+                      File.WriteAllText(Path.Combine(Path.GetTempPath(), "lantern-identity-reused.txt"), "existing identity read");
+          """ + keychain_marker)
+          store.write_text(source)
           PY
           cd "$RUNNER_TEMP"
           cat > "$RUNNER_TEMP/lantern-sim-entitlements.plist" <<'PLIST'
@@ -119,7 +127,7 @@ jobs:
           test -f "$app/PrivacyInfo.xcprivacy"
           id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
           test "$id" = com.lantern.transfer
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")" = 0.7.30
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")" = 0.7.31
           codesign --verify --deep --strict "$app"
           xcrun simctl bootstatus "$device"
           xcrun simctl install "$device" "$app"
@@ -152,3 +160,15 @@ jobs:
           test "$(awk 'END {print $NF}' "$RUNNER_TEMP/lantern-bridge-resume.txt")" = "$pid"
           wait_for_phase 'Native scene active again'
           echo "PASS $DEVICE_FAMILY returned to the same Lantern process"
+          identity_phase="$data/tmp/lantern-identity-reused.txt"
+          test ! -f "$identity_phase"
+          xcrun simctl terminate "$device" "$id"
+          rm -f "$phase"
+          xcrun simctl launch "$device" "$id" | tee "$RUNNER_TEMP/lantern-bridge-cold-restart.txt"
+          restarted_pid="$(awk 'END {print $NF}' "$RUNNER_TEMP/lantern-bridge-cold-restart.txt")"
+          test "$restarted_pid" != "$pid"
+          [[ "$restarted_pid" =~ ^[0-9]+$ ]]
+          pid="$restarted_pid"
+          wait_for_phase 'WebView send page rendered'
+          grep -Fxq 'existing identity read' "$identity_phase"
+          echo "PASS $DEVICE_FAMILY reused its Keychain identity on cold restart"
