@@ -143,7 +143,10 @@ jobs:
           startup "$PREVIOUS_CODE" "$PREVIOUS_VERSION"
           if [ "$CHECK_BACKGROUND" = true ]; then
             if [ "$SDK" = 37 ]; then
-              device shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS
+              for attempt in 1 2 3 4 5 6 7 8; do
+                if device shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS; then break; fi
+                sleep 2
+              done
             else
               device shell am force-stop "$PACKAGE"
               device shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS
