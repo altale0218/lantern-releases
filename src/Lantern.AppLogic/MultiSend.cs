@@ -5,6 +5,7 @@ namespace Lantern.AppLogic;
 
 public sealed partial class AppController
 {
+    private const int MaxSendTargets = 16;
     private readonly object selectionGate=new();
     private readonly SemaphoreSlim batchGate=new(1);
     private string selectionId=Guid.NewGuid().ToString("N");
@@ -25,7 +26,8 @@ public sealed partial class AppController
             var ids=command.TryGetProperty("peerIds",out var list)
                 ?list.EnumerateArray().Select(v=>v.GetString()??"").Distinct(StringComparer.Ordinal).ToArray()
                 :new[]{command.GetProperty("peerId").GetString()??""};
-            if(ids.Length is <1 or >16||ids.Any(id=>!Guid.TryParseExact(id,"N",out _)))throw new IOException("请选择 1–16 台已配对设备");
+            if(ids.Length is < 1 or > MaxSendTargets||ids.Any(id=>!Guid.TryParseExact(id,"N",out _)))
+                throw new IOException($"请选择 1–{MaxSendTargets} 台已配对设备");
             if(outgoing.Count+ids.Length>64)throw new IOException("待发送任务较多，请等待部分任务完成后再发送；文件选择已保留");
             var targets=new List<(TrustedDevice Trust,NearbyDevice Found)>();
             foreach(var id in ids)

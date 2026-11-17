@@ -84,7 +84,7 @@ public final class StartupActivity extends Activity {
             if(reason!=ApplicationExitInfo.REASON_CRASH&&reason!=ApplicationExitInfo.REASON_CRASH_NATIVE
                 &&reason!=ApplicationExitInfo.REASON_INITIALIZATION_FAILURE&&reason!=ApplicationExitInfo.REASON_ANR
                 &&reason!=ApplicationExitInfo.REASON_SIGNALED)continue;
-            StringBuilder text=new StringBuilder("Lantern Android 0.7.29\n系统记录的上次异常退出\n设备：")
+            StringBuilder text=new StringBuilder("Lantern Android 0.7.30\n系统记录的上次异常退出\n设备：")
                 .append(Build.MANUFACTURER).append(" ").append(Build.MODEL)
                 .append("\nAndroid：").append(Build.VERSION.RELEASE).append(" / API ").append(Build.VERSION.SDK_INT)
                 .append("\n时间：").append(new java.util.Date(exit.getTimestamp()))
@@ -128,6 +128,6 @@ public final class StartupActivity extends Activity {
     private void openMain() {
         if(opening)return;opening=true;
         try {startActivity(new Intent().setClassName(getPackageName(),"com.lantern.transfer.MainActivity"));finish();}
-        catch(Exception e){opening=false;showReport("Lantern 0.7.29\n无法打开主界面："+e);}
+        catch(Exception e){opening=false;showReport("Lantern 0.7.30\n无法打开主界面："+e);}
     }
 }

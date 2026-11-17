@@ -237,6 +237,10 @@ async function checkSendConfirmation(p,platform){
  await p.waitForFunction(()=>window.completedPairCloses===2);
  check(await dialog.count()===1,platform+' completing an earlier pairing close does not close the new send dialog');
  check(await dialog.locator('.selection-file').count()===24,platform+' long selections initially mount their first file page');
+ await dialog.locator('.send-file-disclosure summary').focus();
+ await p.keyboard.press('Shift+Tab');
+ check(await dialog.getByRole('button',{name:'关闭',exact:true}).evaluate(button=>button===document.activeElement),
+  platform+' reverse tab follows the file disclosure order within the send dialog');
  await dialog.locator('.send-file-disclosure summary').click();
  await dialog.locator('[data-action="send-more-files"]').click();
  check(await dialog.locator('.selection-file').count()===33,platform+' additional selected files stay available');
@@ -268,9 +272,15 @@ async function checkSendConfirmation(p,platform){
  check((await dialog.locator('.send-filter-note').innerText()).includes('1 台已选设备'),platform+' search keeps selected devices outside its matches');
  const send=dialog.locator('[data-action="send-selection"]');
  check((await send.innerText()).includes('2 台设备'),platform+' confirmation shows the complete target count');
+ await search.fill('设备');
+ await dialog.locator('[data-device="fictional-target-0"]').focus();
+ await p.keyboard.press('ArrowDown');
  await p.evaluate(()=>window.lantern.setState({...fixture,devices:[{...fixture.devices[0],id:'fictional-target-1',name:'虚构设备 1'}]}));
  check(await send.isDisabled(),platform+' an offline selection cannot be silently included or dropped');
- await dialog.locator('[data-action="remove-offline-targets"]').click();
+ const removeOffline=dialog.locator('[data-action="remove-offline-targets"]');
+ check(await removeOffline.evaluate(button=>button===document.activeElement),platform+' a disappearing focused recipient moves focus to its recovery action');
+ await p.keyboard.press('Enter');
+ check(await search.evaluate(input=>input===document.activeElement),platform+' removing the stale selection returns focus to a valid recipient control');
  await p.evaluate(()=>{window.failNextSend=true});
  await send.click();
  check(await send.isDisabled(),platform+' sending locks the confirmation controls');
@@ -286,6 +296,23 @@ async function checkSendConfirmation(p,platform){
  await p.evaluate(()=>{commands.length=0;window.lantern.setState(fixture)});
  await p.locator('nav button[data-page="transfer"]:visible').click();
  await route(p,'transfer');
+}
+async function checkSendLimit(p,platform){
+ await p.evaluate(()=>{
+  const devices=Array.from({length:4},(_,index)=>({...fixture.devices[0],
+   id:'fictional-limit-'+index,name:'演示接收设备 '+index}));
+  window.lantern.setState({...fixture,devices,sendTargetLimit:3});
+  window.lantern.acceptDropped({ok:true,selection:[{id:'0',name:'虚构测试文件.txt',size:12,mime:'text/plain'}],
+   selectionId:'example-limits'});
+ });
+ const dialog=p.getByRole('dialog',{name:'发送文件'}),targets=dialog.getByRole('checkbox');
+ check(await dialog.getByText('已选 0 / 3 台',{exact:true}).count()===1,platform+' recipient limit is visible before choosing');
+ for(let index=0;index<3;index++)await targets.nth(index).click();
+ check(await targets.nth(3).isDisabled()&&!await targets.nth(0).isDisabled(),platform+' the limit blocks only unselected recipients');
+ await targets.nth(0).click();
+ check(!await targets.nth(3).isDisabled(),platform+' deselection frees a place immediately');
+ await dialog.getByRole('button',{name:'关闭',exact:true}).click();
+ await p.evaluate(()=>{commands.length=0;window.lantern.setState(fixture)});
 }
 async function checkDiscoveredPairing(p,platform){
  await p.evaluate(()=>{
@@ -334,6 +361,7 @@ async function checkTouch(p,label){
   await checkNavigation(p,platform);
   await checkDiscoveredPairing(p,platform);
   await checkSendConfirmation(p,platform);
+  await checkSendLimit(p,platform);
   await checkProgressHistory(p,platform);
   await checkTaskPhases(p,platform);
   await checkLazyThumbnails(p,platform);

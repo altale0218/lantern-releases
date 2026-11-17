@@ -6,10 +6,10 @@ namespace Lantern.AppLogic;
 
 public static class AppRelease
 {
-    public const string Version="0.7.29";
-    public const int AndroidCode=62;
+    public const string Version="0.7.30";
+    public const int AndroidCode=63;
     public const string PackageId="com.lantern.transfer";
-    public const string Notes="0.7.29\n• 聊天输入框随多行草稿展开，短草稿还原阅读空间，编辑草稿时保持正在查看的历史位置。\n• 长聊天和传输记录复用时间排列，后台状态刷新减少重复排序。新增、删除和重启仍更新历史顺序。\n• 修复 iOS 原生窗口在启动时的崩溃，整理 iPhone 和 iPad 的构建与验证说明。";
+    public const string Notes="0.7.30\n• 发送窗口明确显示可选设备总数。达到上限时，已选设备仍可取消，空出名额后能立即选择其他设备。\n• 修复弹窗中的反向 Tab 顺序。发送对象掉线时，键盘焦点会转到取消离线选择的按钮，保留已选文件。";
 }
 
 public record OtaView(string Phase="idle",string Message="",ServerRelease? Release=null,long Completed=0,double Speed=0,object? Sources=null);
