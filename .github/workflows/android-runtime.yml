@@ -228,8 +228,11 @@ jobs:
               "The update channel selection control is not visible", tap=True)
           text_button("测试版")
           text_button("检查更新", button_only=True)
-          text_button("下载更新", 95)
-          wait_for(lambda n: "Lantern " + expected in labels(n), "Expected public test release is not visible", 60)
+          title = "Lantern " + expected
+          wait_for(lambda n: any(s == title or s.startswith(title + " · ") for s in labels(n)),
+              "Expected public test release is not visible", 95)
+          print("PASS Android update page showed the expected public beta before download:", expected)
+          text_button("下载更新", 95, button_only=True)
           wait_for(lambda n: "安装更新" in labels(n), "Verified download was not offered for install", 150)
           print("PASS Android app selected beta, found the server release, downloaded and verified the APK")
           text_button("安装更新")
