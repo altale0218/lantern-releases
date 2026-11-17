@@ -233,11 +233,21 @@ jobs:
               raise RuntimeError("Could not enter the update center after onboarding")
           assert not has_permission(), "The fresh test app unexpectedly started with installation permission"
           text_button("打开系统设置", button_only=True)
-          wait_for(lambda n: n.get("package", "") == "com.android.settings" and n.get("checkable") == "true",
-              "The system did not expose the install-from-this-source switch", tap=True)
+          def install_permission_switch(node):
+              if node.get("package", "") != "com.android.settings":
+                  return False
+              if any("allow from this source" in value.lower() for value in labels(node)):
+                  return True
+              return node.get("checkable") == "true" and (
+                  node.get("class", "").endswith("Switch") or "switch_widget" in node.get("resource-id", ""))
+          wait_for(install_permission_switch, "The system did not expose the install-from-this-source switch", tap=True)
           deadline = time.monotonic() + 20
           while time.monotonic() < deadline and not has_permission():
               time.sleep(1)
+          if not has_permission():
+              print("Install permission UI after interaction:", [(n.get("class"), n.get("resource-id"), n.get("checked"), value)
+                  for n in tree() for value in labels(n) if value][-30:])
+              print("Install package app operation:", adb("shell", "appops", "get", package, "REQUEST_INSTALL_PACKAGES").strip())
           assert has_permission(), "The OS did not grant the permission after the user action"
           print("PASS Android presented the system installation-source switch and the user action granted it")
           adb("shell", "input", "keyevent", "KEYCODE_BACK")
