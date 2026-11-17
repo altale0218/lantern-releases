@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: v0.7.31
+          ref: v0.7.32
           persist-credentials: false
       - uses: actions/setup-dotnet@v6
         with:
@@ -127,7 +127,7 @@ jobs:
           test -f "$app/PrivacyInfo.xcprivacy"
           id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
           test "$id" = com.lantern.transfer
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")" = 0.7.31
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")" = 0.7.32
           codesign --verify --deep --strict "$app"
           xcrun simctl bootstatus "$device"
           xcrun simctl install "$device" "$app"
