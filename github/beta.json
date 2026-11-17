@@ -1,27 +1,27 @@
 [
   {
-    "tag_name": "v0.7.31",
+    "tag_name": "v0.7.32",
     "draft": false,
     "prerelease": true,
-    "body": "闪传 Lantern 0.7.31 测试版\n\n- 宽屏聊天集中显示消息与编辑区，Windows 的时间标签增大。窄窗口仍按可用空间排版。\n- 测速页面单独提供可访问的进度读数，读屏只在测速阶段变化时播报状态。\n- 更新渠道和来源保存完成后再启用检查或下载。切换渠道会清除上一渠道的下载入口，保存失败时恢复之前的选项。\n- Android versionCode 64，Windows 手动确认安装。",
+    "body": "闪传 Lantern 0.7.32 测试版\n\n- 修复更新渠道和下载来源保存失败后的同步问题。保存未成功时，后台与界面均继续使用原先的渠道和来源。\n- 补齐 iPhone 和 iPad 模拟器的签名、首启及钥匙串检查步骤。\n- Android versionCode 65，Windows 手动确认安装。",
     "assets": [
       {
         "name": "Lantern-Android.apk",
         "size": 47079027,
-        "digest": "sha256:6dcda8e7bace0b8b5d2461c29343e91a15aaad329b15c240d9bb6f9626546449",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.31/Lantern-Android.apk"
+        "digest": "sha256:ffe811d27afba822c967f88b7a4497eb528439f13e9027045710f90cec3da974",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.32/Lantern-Android.apk"
       },
       {
         "name": "Lantern-Windows.zip",
-        "size": 3413531,
-        "digest": "sha256:b8941c052f4523a413cff75a889725285a5ef62bbb3a53bfbf1bc74f0e20ebc7",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.31/Lantern-Windows.zip"
+        "size": 3413608,
+        "digest": "sha256:1a46beef7522f89ad0d15b5ada51bcbfa8dd3295a88eda7dca28b776d30e2bb0",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.32/Lantern-Windows.zip"
       },
       {
         "name": "SHA256SUMS.txt",
         "size": 172,
-        "digest": "sha256:b714bacb4a635e6f3e949da92319f6ddebad326386b8d749632d6d7e22499d4a",
-        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.31/SHA256SUMS.txt"
+        "digest": "sha256:6c36f2822a20217830672e141039f8991221e74e6490ab5779728c8930de41ba",
+        "browser_download_url": "https://github.com/altale0218/lantern-releases/releases/download/v0.7.32/SHA256SUMS.txt"
       }
     ]
   }
