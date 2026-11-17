@@ -14,21 +14,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - sdk: 35
-            image: system-images;android-35;default;x86_64
-            check_background: 'true'
-            previous_version: 0.7.31
-            previous_code: '64'
-            previous_sha: 6dcda8e7bace0b8b5d2461c29343e91a15aaad329b15c240d9bb6f9626546449
-          - sdk: 35
-            image: system-images;android-35;default;x86_64
-            check_background: 'true'
-            previous_version: 0.7.7
-            previous_code: '40'
-            previous_sha: ea6da7e0632416c85fb2b5e59f1ae37413430f85993f35257041a065bd98ba49
           - sdk: 37
             image: system-images;android-37.0;default;x86_64
-            check_background: 'false'
+            check_background: 'true'
             previous_version: 0.7.31
             previous_code: '64'
             previous_sha: 6dcda8e7bace0b8b5d2461c29343e91a15aaad329b15c240d9bb6f9626546449
