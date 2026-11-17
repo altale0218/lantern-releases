@@ -192,11 +192,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          cd "$RUNNER_TEMP"
+          dotnet new globaljson --sdk-version 10.0.401 --roll-forward disable --force
           test "$(dotnet --version)" = 10.0.401
           test "$(xcrun --sdk iphoneos --show-sdk-version)" = 26.5
           dotnet workload install ios --version 10.0.401
-          dotnet build src/Lantern.iOS/Lantern.iOS.csproj -c Release -r ios-arm64 -p:EnableCodeSigning=false
-          app="$(find src/Lantern.iOS/bin/Release -type d -name '*.app' -print -quit)"
+          dotnet build "$GITHUB_WORKSPACE/src/Lantern.iOS/Lantern.iOS.csproj" -c Release -r ios-arm64 -p:EnableCodeSigning=false
+          app="$(find "$GITHUB_WORKSPACE/src/Lantern.iOS/bin/Release" -type d -name '*.app' -print -quit)"
           test -f "$app/PrivacyInfo.xcprivacy"
           test -f "$app/ui/index.html"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")" = 0.7.32
