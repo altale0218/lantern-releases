@@ -177,9 +177,21 @@ jobs:
                   return []
           def labels(node):
               return [node.get("text", "").strip(), node.get("content-desc", "").strip()]
+          size = re.findall(r"(\d+)x(\d+)", adb("shell", "wm", "size"))
+          display_width, display_height = map(int, size[-1])
           def click_node(node):
               left, top, right, bottom = map(int, re.findall(r"\d+", node.attrib["bounds"]))
-              adb("shell", "input", "tap", str((left + right)//2), str((top + bottom)//2))
+              x, y = (left + right)//2, (top + bottom)//2
+              if node.get("package") == package and any(s in ("下载更新", "安装更新") for s in labels(node)):
+                  if y > display_height * 0.87 or bottom - top < 24:
+                      mid = str(display_width//2)
+                      adb("shell", "input", "swipe", mid, str(display_height*72//100),
+                          mid, str(display_height*40//100), "350")
+                      return False
+                  print("Update action safely within app content:", labels(node)[0],
+                      "vertical position", round(y/display_height, 2), flush=True)
+              adb("shell", "input", "tap", str(x), str(y))
+              return True
           def wait_for(predicate, description, seconds=70, tap=False):
               deadline = time.monotonic() + seconds
               recent = []
@@ -187,12 +199,16 @@ jobs:
                   recent = tree()
                   for node in recent:
                       if predicate(node):
-                          if tap:
-                              click_node(node)
+                          if tap and not click_node(node):
+                              break
                           return
                   time.sleep(1)
               print("Visible test labels:", [(n.get("class"), n.get("resource-id"), text)
                   for n in recent for text in labels(n) if text][-32:])
+              crash = adb("shell", "logcat", "-d", "-b", "crash", "-v", "brief", "-t", "36")
+              for line in crash.splitlines():
+                  if "FATAL EXCEPTION:" in line or "com.lantern.transfer" in line or re.search(r"Exception:", line):
+                      print("Crash buffer:", line.split(" /data/")[0][:200])
               raise RuntimeError(description)
           def text_button(text, seconds=70, button_only=False):
               wait_for(lambda n: text in labels(n) and (not button_only or n.get("class") == "android.widget.Button"), "Missing control: " + text, seconds, tap=True)
