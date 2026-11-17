@@ -83,6 +83,19 @@ jobs:
               "https://github.com/altale0218/lantern-releases/releases/download/v$version/Lantern-Android.apk"
             printf '%s  %s\n' "$digest" "$destination" | sha256sum -c
           }
+          install_apk() {
+            output="$RUNNER_TEMP/lantern-install.txt"
+            for attempt in {1..10}; do
+              if device install --no-streaming "$@" > "$output" 2>&1; then
+                cat "$output"
+                return 0
+              fi
+              cat "$output"
+              if ! grep -Eqi "Can.t find service|DEAD_OBJECT|broken pipe|device offline" "$output"; then return 1; fi
+              sleep 3
+            done
+            return 1
+          }
           startup() {
             code=$1
             version=$2
@@ -124,12 +137,11 @@ jobs:
             echo "PASS Lantern $version started the native Android main activity on API $SDK"
           }
           download "$PREVIOUS_VERSION" "$PREVIOUS_SHA"
-          device install --no-streaming "$RUNNER_TEMP/lantern-$PREVIOUS_VERSION.apk"
+          install_apk "$RUNNER_TEMP/lantern-$PREVIOUS_VERSION.apk"
           startup "$PREVIOUS_CODE" "$PREVIOUS_VERSION"
           if [ "$CHECK_BACKGROUND" = true ]; then
             device shell am force-stop "$PACKAGE"
             device shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS
-            device shell appops set "$PACKAGE" REQUEST_INSTALL_PACKAGES allow
             device shell am start -W -n "$PACKAGE/.StartupActivity"
             python3 - <<'PY'
           import os
@@ -172,6 +184,9 @@ jobs:
               raise RuntimeError(description)
           def text_button(text, seconds=70):
               wait_for(lambda n: text in labels(n), "Missing control: " + text, seconds, tap=True)
+          def has_permission():
+              return bool(re.search(r"REQUEST_INSTALL_PACKAGES:\s*allow", adb("shell", "appops", "get",
+                  package, "REQUEST_INSTALL_PACKAGES")))
           for _ in range(10):
               nodes = tree()
               update = next((n for n in nodes if "更新中心" in labels(n)), None)
@@ -186,6 +201,16 @@ jobs:
               time.sleep(1)
           else:
               raise RuntimeError("Could not enter the update center after onboarding")
+          assert not has_permission(), "The fresh test app unexpectedly started with installation permission"
+          text_button("打开系统设置")
+          wait_for(lambda n: n.get("package", "") == "com.android.settings" and n.get("checkable") == "true",
+              "The system did not expose the install-from-this-source switch", tap=True)
+          deadline = time.monotonic() + 20
+          while time.monotonic() < deadline and not has_permission():
+              time.sleep(1)
+          assert has_permission(), "The OS did not grant the permission after the user action"
+          print("PASS Android presented the system installation-source switch and the user action granted it")
+          adb("shell", "input", "keyevent", "KEYCODE_BACK")
           wait_for(lambda n: "稳定版" in labels(n) or (
               "更新渠道" in labels(n) and (n.get("clickable") == "true" or n.get("class") == "android.widget.Spinner")),
               "The update channel selection control is not visible", tap=True)
@@ -224,7 +249,7 @@ jobs:
           fi
           if [ "$CHECK_BACKGROUND" != true ]; then
             download "$NEXT_VERSION" "$NEXT_SHA"
-            device install --no-streaming -r "$RUNNER_TEMP/lantern-$NEXT_VERSION.apk"
+            install_apk -r "$RUNNER_TEMP/lantern-$NEXT_VERSION.apk"
             startup "$NEXT_CODE" "$NEXT_VERSION"
           fi
           echo "PASS same-signature upgrade preserved the application package"
