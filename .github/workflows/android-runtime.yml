@@ -28,12 +28,12 @@ jobs:
       CHECK_BACKGROUND: ${{ matrix.check_background }}
       SERIAL: emulator-5554
       PACKAGE: com.lantern.transfer
-      PREVIOUS_VERSION: 0.7.28
-      PREVIOUS_CODE: '61'
-      PREVIOUS_SHA: c888bb5ce2a6e637c28cfc0ff9320a881101502a7a2f66ef506110cf4f4b7358
-      NEXT_VERSION: 0.7.29
-      NEXT_CODE: '62'
-      NEXT_SHA: c4d447bcb6d9265abf1086d8fb59fdbe3ff6cbe2ad9dd0c165bc3aa4341b3fb0
+      PREVIOUS_VERSION: 0.7.29
+      PREVIOUS_CODE: '62'
+      PREVIOUS_SHA: c4d447bcb6d9265abf1086d8fb59fdbe3ff6cbe2ad9dd0c165bc3aa4341b3fb0
+      NEXT_VERSION: 0.7.30
+      NEXT_CODE: '63'
+      NEXT_SHA: 0a11e2fa24fe9cf0d7e318369177e3274968e7bddcf193fb028e2d98cf844e53
     steps:
       - name: Test the published Android packages
         shell: bash
