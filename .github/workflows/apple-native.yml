@@ -1,4 +1,4 @@
-name: Apple native WebView bridge smoke
+name: Apple simulator signing and WebView smoke
 
 on:
   push:
@@ -72,7 +72,12 @@ jobs:
           before("suspended = false;", 'if (ready) ObserveSmoke("Native scene active again");')
           before("suspended = true;", 'if (ready) ObserveSmoke("Native scene suspended");')
           before("if (closing) return;\n            if (id > 0)", """
-                      if (!ready) ObserveSmoke("Initialization exception: " + error.GetType().Name + ":" + error.HResult);
+                      if (!ready)
+                      {
+                          ObserveSmoke("Initialization exception: " + error.GetType().Name + ":" + error.HResult);
+                          if (error.Message.StartsWith("无法访问设备钥匙串", StringComparison.Ordinal))
+                              ObserveSmoke(error.Message);
+                      }
                   """)
           marker = "    private void Evaluate(string script)"
           assert text.count(marker) == 1
@@ -86,9 +91,23 @@ jobs:
           path.write_text(text)
           PY
           cd "$RUNNER_TEMP"
+          cat > "$RUNNER_TEMP/lantern-sim-entitlements.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>application-identifier</key><string>LANTERNQA1.com.lantern.transfer</string>
+            <key>com.apple.developer.team-identifier</key><string>LANTERNQA1</string>
+            <key>keychain-access-groups</key><array><string>LANTERNQA1.com.lantern.transfer</string></array>
+          </dict>
+          </plist>
+          PLIST
+          plutil -lint "$RUNNER_TEMP/lantern-sim-entitlements.plist"
           dotnet new globaljson --sdk-version "$DOTNET_SDK" --roll-forward disable --force
           dotnet workload install ios --version "$DOTNET_SDK"
-          dotnet build "$GITHUB_WORKSPACE/src/Lantern.iOS/Lantern.iOS.csproj" -c Debug -r "$SIMULATOR_RID" -p:EnableCodeSigning=false -p:LanternIosSdkVersion=26.2
+          dotnet build "$GITHUB_WORKSPACE/src/Lantern.iOS/Lantern.iOS.csproj" -c Debug -r "$SIMULATOR_RID" \
+            -p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false -p:LanternIosSdkVersion=26.2 \
+            "-p:CodesignEntitlements=$RUNNER_TEMP/lantern-sim-entitlements.plist"
       - name: Check iOS bridge readiness and app lifecycle
         shell: bash
         timeout-minutes: 8
@@ -107,7 +126,8 @@ jobs:
           while IFS= read -r -d '' framework; do
             codesign --force --sign - --timestamp=none "$framework"
           done < <(find "$app" -depth -type d -name '*.framework' -print0)
-          codesign --force --sign - --timestamp=none "$app"
+          codesign --force --sign - --timestamp=none --generate-entitlement-der \
+            --entitlements "$RUNNER_TEMP/lantern-sim-entitlements.plist" "$app"
           codesign --verify --deep --strict "$app"
           xcrun simctl bootstatus "$device"
           xcrun simctl install "$device" "$app"
