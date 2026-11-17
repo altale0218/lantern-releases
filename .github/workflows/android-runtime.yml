@@ -17,9 +17,21 @@ jobs:
           - sdk: 35
             image: system-images;android-35;default;x86_64
             check_background: 'true'
+            previous_version: 0.7.30
+            previous_code: '63'
+            previous_sha: 0a11e2fa24fe9cf0d7e318369177e3274968e7bddcf193fb028e2d98cf844e53
+          - sdk: 35
+            image: system-images;android-35;default;x86_64
+            check_background: 'true'
+            previous_version: 0.7.7
+            previous_code: '40'
+            previous_sha: ea6da7e0632416c85fb2b5e59f1ae37413430f85993f35257041a065bd98ba49
           - sdk: 37
             image: system-images;android-37.0;default;x86_64
             check_background: 'false'
+            previous_version: 0.7.30
+            previous_code: '63'
+            previous_sha: 0a11e2fa24fe9cf0d7e318369177e3274968e7bddcf193fb028e2d98cf844e53
     runs-on: ubuntu-24.04
     timeout-minutes: 34
     env:
@@ -28,12 +40,12 @@ jobs:
       CHECK_BACKGROUND: ${{ matrix.check_background }}
       SERIAL: emulator-5554
       PACKAGE: com.lantern.transfer
-      PREVIOUS_VERSION: 0.7.29
-      PREVIOUS_CODE: '62'
-      PREVIOUS_SHA: c4d447bcb6d9265abf1086d8fb59fdbe3ff6cbe2ad9dd0c165bc3aa4341b3fb0
-      NEXT_VERSION: 0.7.30
-      NEXT_CODE: '63'
-      NEXT_SHA: 0a11e2fa24fe9cf0d7e318369177e3274968e7bddcf193fb028e2d98cf844e53
+      PREVIOUS_VERSION: ${{ matrix.previous_version }}
+      PREVIOUS_CODE: ${{ matrix.previous_code }}
+      PREVIOUS_SHA: ${{ matrix.previous_sha }}
+      NEXT_VERSION: 0.7.31
+      NEXT_CODE: '64'
+      NEXT_SHA: 6dcda8e7bace0b8b5d2461c29343e91a15aaad329b15c240d9bb6f9626546449
     steps:
       - name: Test the published Android packages
         shell: bash
