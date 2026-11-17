@@ -14,21 +14,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15
+          - runner: macos-26
             target: iossimulator-arm64
             family: iPhone
             type: com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro
-          - runner: macos-15
+          - runner: macos-26
             target: iossimulator-arm64
             family: iPad
-            type: com.apple.CoreSimulator.SimDeviceType.iPad-Air-13-inch-M3
+            type: com.apple.CoreSimulator.SimDeviceType.iPad-Air-13-inch-M4
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 26
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       DOTNET_NOLOGO: '1'
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      DOTNET_SDK: 10.0.300
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      DOTNET_SDK: 10.0.401
       DEVICE_TYPE: ${{ matrix.type }}
       DEVICE_FAMILY: ${{ matrix.family }}
       SIMULATOR_RID: ${{ matrix.target }}
@@ -39,7 +39,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.300'
+          dotnet-version: '10.0.401'
       - name: Build the released client with simulator observations
         shell: bash
         run: |
@@ -113,7 +113,7 @@ jobs:
           dotnet new globaljson --sdk-version "$DOTNET_SDK" --roll-forward disable --force
           dotnet workload install ios --version "$DOTNET_SDK"
           dotnet build "$GITHUB_WORKSPACE/src/Lantern.iOS/Lantern.iOS.csproj" -c Debug -r "$SIMULATOR_RID" \
-            -p:EnableCodeSigning=true -p:CodesignKey=- -p:CodesignRequireProvisioningProfile=false -p:LanternIosSdkVersion=26.2 \
+            -p:EnableCodeSigning=true -p:CodesignKey=- -p:CodesignRequireProvisioningProfile=false \
             "-p:CodesignEntitlements=$RUNNER_TEMP/lantern-sim-entitlements.plist"
       - name: Check iOS bridge readiness and app lifecycle
         shell: bash
@@ -172,3 +172,35 @@ jobs:
           wait_for_phase 'WebView send page rendered'
           grep -Fxq 'existing identity read' "$identity_phase"
           echo "PASS $DEVICE_FAMILY reused its Keychain identity on cold restart"
+
+  device-build:
+    runs-on: macos-26
+    timeout-minutes: 24
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: v0.7.32
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.401'
+      - name: Build the released iPhone and iPad device target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(dotnet --version)" = 10.0.401
+          test "$(xcrun --sdk iphoneos --show-sdk-version)" = 26.5
+          dotnet workload install ios --version 10.0.401
+          dotnet build src/Lantern.iOS/Lantern.iOS.csproj -c Release -r ios-arm64 -p:EnableCodeSigning=false
+          app="$(find src/Lantern.iOS/bin/Release -type d -name '*.app' -print -quit)"
+          test -f "$app/PrivacyInfo.xcprivacy"
+          test -f "$app/ui/index.html"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")" = 0.7.32
+          executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")"
+          file "$app/$executable" | grep 'arm64'
+          xcrun vtool -show-build "$app/$executable" | grep -E 'platform[[:space:]]+IOS[[:space:]]*$'
+          echo "PASS released iOS device target built with the documented default toolchain"
